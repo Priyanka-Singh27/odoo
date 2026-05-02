@@ -173,7 +173,7 @@ export default function BookingsList() {
         </div>
 
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
             <SelectTrigger className="bg-white border-slate-200 rounded-lg h-9 text-slate-700 w-full md:w-40 text-[13px]">
                <div className="flex items-center gap-2">
                  <Filter className="w-3.5 h-3.5 text-slate-400" />

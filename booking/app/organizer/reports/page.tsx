@@ -64,7 +64,7 @@ export default function ReportsPage() {
           <p className="text-slate-500 mt-1 text-sm">Analyze your booking performance and provider metrics</p>
         </div>
         <div className="flex items-center gap-3">
-          <Select value={period} onValueChange={setPeriod}>
+          <Select value={period} onValueChange={(v) => setPeriod(v ?? "7days")}>
             <SelectTrigger className="bg-white border-slate-200 rounded-lg h-9 text-slate-700 w-40 text-[13px]">
                <div className="flex items-center gap-2">
                  <Calendar className="w-3.5 h-3.5 text-slate-400" />

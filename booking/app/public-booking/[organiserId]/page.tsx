@@ -20,7 +20,7 @@ export interface OrganiserProfile {
 
 export default function PublicBookingPage() {
   // Empty states for prop-driven architecture, avoiding mock arrays
-  const organiser: OrganiserProfile | null = null;
+  const organiser = null as OrganiserProfile | null;
   const services: PublicService[] = [];
 
   return (
