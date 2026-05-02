@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/jwt';
 
-const PUBLIC_ROUTES = ['/login', '/signup', '/verify-otp', '/forgot-password', 'home', '/public-booking'];
+const PUBLIC_ROUTES = ['/login', '/signup', '/verify-otp', '/forgot-password', '/home', '/public-booking'];
 
 const ROLE_REDIRECTS: Record<string, string> = {
   customer: '/home',
