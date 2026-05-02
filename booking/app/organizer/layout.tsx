@@ -44,10 +44,7 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
           </div>
           
           <div className="flex items-center gap-4">
-            <button className="hidden sm:flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors">
-              <Plus className="w-4 h-4" /> Create New
-            </button>
-            
+
             <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md relative transition-colors">
               <Bell className="w-5 h-5" />
               <span className="absolute top-2 right-2 w-2 h-2 bg-blue-600 rounded-full border-2 border-white"></span>

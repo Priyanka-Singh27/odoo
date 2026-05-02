@@ -107,9 +107,9 @@ export default function CalendarPage() {
     const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
     return (
-      <div className="grid grid-cols-7 border-t border-l border-white/5 bg-[#111827] rounded-3xl overflow-hidden shadow-2xl">
+      <div className="grid grid-cols-7 border-t border-l border-slate-200 bg-white rounded-2xl overflow-hidden shadow-sm">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
-          <div key={day} className="px-4 py-4 text-center text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] bg-white/[0.02] border-r border-b border-white/5">
+          <div key={day} className="px-4 py-4 text-center text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] bg-slate-50 border-r border-b border-slate-200">
             {day}
           </div>
         ))}
@@ -119,36 +119,36 @@ export default function CalendarPage() {
             <div 
               key={idx} 
               className={cn(
-                "min-h-[140px] p-2 border-r border-b border-white/5 transition-colors",
-                !isSameMonth(day, monthStart) ? "bg-white/[0.01] opacity-30" : "bg-transparent hover:bg-white/[0.02]",
-                isSameDay(day, new Date()) && "bg-indigo-600/5"
+                "min-h-[140px] p-2 border-r border-b border-slate-200 transition-colors",
+                !isSameMonth(day, monthStart) ? "bg-slate-50 opacity-50" : "bg-white hover:bg-slate-50/50",
+                isSameDay(day, new Date()) && "bg-blue-50/30"
               )}
             >
               <div className="flex justify-between items-center mb-2 px-2">
                 <span className={cn(
-                  "text-sm font-bold",
-                  isSameDay(day, new Date()) ? "w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center -ml-1" : "text-slate-400"
+                  "text-[13px] font-bold",
+                  isSameDay(day, new Date()) ? "w-7 h-7 rounded-full bg-[#378ADD] text-white flex items-center justify-center -ml-1" : "text-slate-700"
                 )}>
                   {format(day, "d")}
                 </span>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {dayBookings.slice(0, 3).map(b => (
                   <div 
                     key={b.id}
                     onClick={() => setSelectedBooking(b)}
                     className={cn(
-                      "px-2 py-1.5 rounded-lg text-[10px] font-bold truncate cursor-pointer transition-all hover:scale-[1.02]",
-                      b.status === 'confirmed' ? "bg-green-500/10 text-green-400 border border-green-500/20" : 
-                      b.status === 'reserved' ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : 
-                      "bg-slate-700/30 text-slate-400 border border-white/5"
+                      "px-2 py-1.5 rounded-md text-[11px] font-semibold truncate cursor-pointer transition-all hover:scale-[1.02]",
+                      b.status === 'confirmed' ? "bg-green-50 text-green-700 border border-green-100" : 
+                      b.status === 'reserved' ? "bg-amber-50 text-amber-700 border border-amber-100" : 
+                      "bg-slate-100 text-slate-600 border border-slate-200"
                     )}
                   >
                     {b.start_time} - {b.customer_name}
                   </div>
                 ))}
                 {dayBookings.length > 3 && (
-                  <p className="text-[10px] text-slate-500 font-bold px-2">+{dayBookings.length - 3} more</p>
+                  <p className="text-[10px] text-slate-500 font-semibold px-2">+{dayBookings.length - 3} more</p>
                 )}
               </div>
             </div>
@@ -163,50 +163,50 @@ export default function CalendarPage() {
     const weekDays = eachDayOfInterval({ start: startDate, end: endOfWeek(startDate) });
 
     return (
-      <div className="flex flex-col bg-[#111827] rounded-3xl overflow-hidden shadow-2xl border border-white/5">
-        <div className="flex border-b border-white/5">
-           <div className="w-20 shrink-0 border-r border-white/5 bg-white/[0.02]" />
+      <div className="flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-200">
+        <div className="flex border-b border-slate-200">
+           <div className="w-20 shrink-0 border-r border-slate-200 bg-slate-50" />
            {weekDays.map(day => (
              <div key={day.toString()} className={cn(
-               "flex-1 px-4 py-4 text-center border-r border-white/5 last:border-0 transition-colors",
-               isSameDay(day, new Date()) ? "bg-indigo-600/5" : "bg-white/[0.02]"
+               "flex-1 px-4 py-4 text-center border-r border-slate-200 last:border-0 transition-colors",
+               isSameDay(day, new Date()) ? "bg-blue-50/50" : "bg-slate-50"
              )}>
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{format(day, "EEE")}</p>
                 <p className={cn(
                   "text-xl font-bold",
-                  isSameDay(day, new Date()) ? "text-indigo-400" : "text-white"
+                  isSameDay(day, new Date()) ? "text-[#378ADD]" : "text-slate-900"
                 )}>{format(day, "d")}</p>
              </div>
            ))}
         </div>
-        <div className="flex-1 overflow-y-auto max-h-[800px] scrollbar-hide relative">
+        <div className="flex-1 overflow-y-auto max-h-[800px] scrollbar-hide relative bg-white">
            {hours.map(hour => (
-             <div key={hour.toString()} className="flex border-b border-white/[0.03] min-h-[80px] group">
-                <div className="w-20 shrink-0 border-r border-white/5 text-right pr-4 py-3 text-[10px] font-bold text-slate-500 uppercase">
+             <div key={hour.toString()} className="flex border-b border-slate-100 min-h-[80px] group">
+                <div className="w-20 shrink-0 border-r border-slate-200 text-right pr-4 py-3 text-[11px] font-semibold text-slate-500 uppercase bg-slate-50/50">
                    {format(hour, "HH:mm")}
                 </div>
                 {weekDays.map(day => {
                    const hourStart = format(hour, "HH:mm");
                    const bks = getAppointmentsForDay(day).filter(b => b.start_time.startsWith(hourStart.split(':')[0]));
                    return (
-                     <div key={day.toString()} className="flex-1 border-r border-white/[0.03] last:border-0 p-1 relative">
+                     <div key={day.toString()} className="flex-1 border-r border-slate-100 last:border-0 p-1.5 relative">
                         {bks.map(b => (
                            <div 
                              key={b.id}
                              onClick={() => setSelectedBooking(b)}
                              className={cn(
-                               "mb-1 px-3 py-2 rounded-xl text-xs font-bold shadow-lg transition-all hover:scale-[1.02] cursor-pointer",
-                               b.status === 'confirmed' ? "bg-indigo-600 text-white shadow-indigo-600/20" : 
-                               b.status === 'reserved' ? "bg-amber-600 text-white shadow-amber-600/20" : 
-                               "bg-slate-700 text-slate-300"
+                               "mb-1.5 px-3 py-2 rounded-lg text-[12px] font-semibold shadow-sm transition-all hover:shadow-md cursor-pointer border",
+                               b.status === 'confirmed' ? "bg-white border-[#378ADD] text-slate-900 border-l-4" : 
+                               b.status === 'reserved' ? "bg-white border-amber-400 text-slate-900 border-l-4" : 
+                               "bg-slate-50 border-slate-300 text-slate-600 border-l-4"
                              )}
                            >
-                              <div className="flex justify-between items-center mb-1">
-                                <span>{b.start_time}</span>
-                                <span className="text-[9px] opacity-80">{b.people_count}P</span>
+                              <div className="flex justify-between items-center mb-0.5">
+                                <span className="text-[#378ADD] font-bold">{b.start_time}</span>
+                                <span className="text-[10px] text-slate-400 font-medium">{b.people_count}P</span>
                               </div>
-                              <p className="truncate">{b.customer_name}</p>
-                              <p className="text-[9px] opacity-70 truncate font-medium">{b.appointment_name}</p>
+                              <p className="truncate text-slate-900">{b.customer_name}</p>
+                              <p className="text-[10px] text-slate-500 truncate font-medium">{b.appointment_name}</p>
                            </div>
                         ))}
                      </div>
@@ -217,7 +217,7 @@ export default function CalendarPage() {
            {/* Current Time Indicator */}
            {isSameMonth(currentDate, new Date()) && (
               <div className="absolute left-20 right-0 h-[2px] bg-red-500 z-10 pointer-events-none" style={{ top: '250px' }}>
-                 <div className="w-3 h-3 rounded-full bg-red-500 -ml-1.5 -mt-1.5 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                 <div className="w-3 h-3 rounded-full bg-red-500 -ml-1.5 -mt-1.5 shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
               </div>
            )}
         </div>
@@ -226,20 +226,20 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Calendar</h1>
-          <p className="text-slate-400 mt-1 text-sm font-medium">Keep track of your schedule and availability</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Calendar</h1>
+          <p className="text-slate-500 mt-1 text-[13px] font-medium">Keep track of your schedule and availability</p>
         </div>
-        <div className="flex items-center gap-2 bg-[#111827] p-1.5 border border-white/5 rounded-2xl shadow-xl">
+        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
            {["month", "week", "day"].map(v => (
              <button 
                key={v}
                onClick={() => setView(v as any)}
                className={cn(
-                 "px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all",
-                 view === v ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20" : "text-slate-400 hover:text-white"
+                 "px-4 py-1.5 rounded-lg text-[12px] font-semibold uppercase tracking-wider transition-all",
+                 view === v ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
                )}
              >
                {v}
@@ -248,114 +248,114 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between bg-[#111827] border border-white/5 rounded-3xl p-6 shadow-xl">
+      <div className="flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
          <div className="flex items-center gap-6">
-            <h2 className="text-2xl font-bold text-white min-w-[200px]">
+            <h2 className="text-xl font-bold text-slate-900 min-w-[180px]">
                {format(currentDate, view === 'month' ? "MMMM yyyy" : "MMM dd, yyyy")}
             </h2>
             <div className="flex items-center gap-2">
-               <button onClick={prevDate} className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5">
-                  <ChevronLeft className="w-5 h-5" />
+               <button onClick={prevDate} className="p-2 bg-white hover:bg-slate-50 text-slate-600 rounded-lg transition-all border border-slate-200">
+                  <ChevronLeft className="w-4 h-4" />
                </button>
-               <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs rounded-xl transition-all border border-white/5 uppercase tracking-widest">
+               <button onClick={() => setCurrentDate(new Date())} className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-[12px] rounded-lg transition-all border border-slate-200 uppercase tracking-widest">
                   Today
                </button>
-               <button onClick={nextDate} className="p-2.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5">
-                  <ChevronRight className="w-5 h-5" />
+               <button onClick={nextDate} className="p-2 bg-white hover:bg-slate-50 text-slate-600 rounded-lg transition-all border border-slate-200">
+                  <ChevronRight className="w-4 h-4" />
                </button>
             </div>
          </div>
-         <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2.5">
-               <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
-               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Confirmed</span>
+         <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+               <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+               <span className="text-[12px] font-semibold text-slate-600">Confirmed</span>
             </div>
-            <div className="flex items-center gap-2.5">
-               <div className="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]" />
-               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Reserved</span>
+            <div className="flex items-center gap-2">
+               <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+               <span className="text-[12px] font-semibold text-slate-600">Reserved</span>
             </div>
-            <div className="flex items-center gap-2.5">
-               <div className="w-3 h-3 rounded-full bg-slate-600" />
-               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Cancelled</span>
+            <div className="flex items-center gap-2">
+               <div className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+               <span className="text-[12px] font-semibold text-slate-600">Cancelled</span>
             </div>
          </div>
       </div>
 
       {isLoading ? (
-        <div className="py-48 flex flex-col items-center justify-center gap-4">
-           <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
-           <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Loading Schedule...</p>
+        <div className="py-40 flex flex-col items-center justify-center gap-4">
+           <Loader2 className="w-8 h-8 text-[#378ADD] animate-spin" />
+           <p className="text-slate-500 font-semibold text-[13px]">Loading Schedule...</p>
         </div>
       ) : (
-        <div className="animate-in fade-in zoom-in-95 duration-500">
+        <div className="animate-in fade-in duration-500">
            {view === 'month' ? renderMonthView() : renderWeekView()}
         </div>
       )}
 
-      {/* Detail Slideover (Reusing Detail Modal logic would be better but keeping it simple) */}
+      {/* Detail Slideover */}
       {selectedBooking && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedBooking(null)} />
-          <div className="relative w-full max-w-md bg-[#111827] h-full shadow-2xl border-l border-white/5 p-8 animate-in slide-in-from-right duration-300">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedBooking(null)} />
+          <div className="relative w-full max-w-md bg-white h-full shadow-2xl border-l border-slate-200 p-8 animate-in slide-in-from-right duration-300">
              <div className="flex justify-between items-center mb-8">
-                <h3 className="text-xl font-bold text-white">Booking Detail</h3>
-                <button onClick={() => setSelectedBooking(null)} className="p-2 text-slate-400 hover:text-white rounded-xl">
-                   <X className="w-6 h-6" />
+                <h3 className="text-xl font-bold text-slate-900">Booking Detail</h3>
+                <button onClick={() => setSelectedBooking(null)} className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
+                   <X className="w-5 h-5" />
                 </button>
              </div>
              
-             <div className="space-y-8">
-                <div className="flex items-center gap-4 p-6 bg-white/[0.02] border border-white/5 rounded-[32px]">
-                   <div className="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 font-bold text-xl">
+             <div className="space-y-6">
+                <div className="flex items-center gap-4 p-5 bg-slate-50 border border-slate-100 rounded-2xl">
+                   <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center text-[#378ADD] font-bold text-xl">
                       {selectedBooking.customer_name.charAt(0)}
                    </div>
                    <div>
-                      <p className="text-lg font-bold text-white leading-none">{selectedBooking.customer_name}</p>
-                      <p className="text-xs text-slate-500 mt-1">{selectedBooking.customer_email}</p>
+                      <p className="text-[15px] font-bold text-slate-900 leading-none mb-1">{selectedBooking.customer_name}</p>
+                      <p className="text-[13px] text-slate-500">{selectedBooking.customer_email}</p>
                    </div>
                 </div>
 
                 <div className="space-y-3">
-                   <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-4">
-                      <CalendarIcon className="w-5 h-5 text-indigo-400" />
+                   <div className="p-4 bg-white border border-slate-100 shadow-sm rounded-xl flex items-center gap-4">
+                      <CalendarIcon className="w-5 h-5 text-[#378ADD]" />
                       <div>
-                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Date</p>
-                         <p className="text-white font-bold">{format(new Date(selectedBooking.slot_date), "EEEE, MMM dd, yyyy")}</p>
+                         <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Date</p>
+                         <p className="text-slate-900 font-semibold text-[13px]">{format(new Date(selectedBooking.slot_date), "EEEE, MMM dd, yyyy")}</p>
                       </div>
                    </div>
-                   <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-4">
-                      <Clock className="w-5 h-5 text-indigo-400" />
+                   <div className="p-4 bg-white border border-slate-100 shadow-sm rounded-xl flex items-center gap-4">
+                      <Clock className="w-5 h-5 text-[#378ADD]" />
                       <div>
-                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Time</p>
-                         <p className="text-white font-bold">{selectedBooking.start_time} - {selectedBooking.end_time || '10:00 AM'}</p>
+                         <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Time</p>
+                         <p className="text-slate-900 font-semibold text-[13px]">{selectedBooking.start_time} - {selectedBooking.end_time || '10:00 AM'}</p>
                       </div>
                    </div>
-                   <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center gap-4">
-                      <Users className="w-5 h-5 text-indigo-400" />
+                   <div className="p-4 bg-white border border-slate-100 shadow-sm rounded-xl flex items-center gap-4">
+                      <Users className="w-5 h-5 text-[#378ADD]" />
                       <div>
-                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-0.5">Service & Provider</p>
-                         <p className="text-white font-bold">{selectedBooking.appointment_name}</p>
-                         <p className="text-xs text-slate-500 font-medium">with {selectedBooking.provider_name}</p>
+                         <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mb-0.5">Service & Provider</p>
+                         <p className="text-slate-900 font-semibold text-[13px]">{selectedBooking.appointment_name}</p>
+                         <p className="text-[12px] text-slate-500 font-medium">with {selectedBooking.provider_name}</p>
                       </div>
                    </div>
                 </div>
 
                 <div className="pt-4 space-y-4">
-                   <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-                      <span className="text-slate-500 font-bold text-xs uppercase tracking-widest">Status</span>
+                   <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                      <span className="text-slate-500 font-bold text-[12px] uppercase tracking-wider">Status</span>
                       <Badge className={cn(
-                        "px-3 py-1 rounded-full font-bold",
-                        selectedBooking.status === 'confirmed' ? "bg-green-500/10 text-green-400" : "bg-amber-500/10 text-amber-400"
+                        "px-3 py-1 rounded-full font-bold text-[11px]",
+                        selectedBooking.status === 'confirmed' ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-amber-100 text-amber-700 hover:bg-amber-100"
                       )}>
                         {selectedBooking.status.toUpperCase()}
                       </Badge>
                    </div>
                    
-                   <div className="grid grid-cols-2 gap-4">
-                      <Button variant="outline" className="border-white/10 hover:bg-white/5 text-white rounded-xl h-14 font-bold">
+                   <div className="grid grid-cols-2 gap-3 pt-2">
+                      <Button variant="outline" className="border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl h-12 font-semibold">
                          Reschedule
                       </Button>
-                      <Button className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-14 font-bold shadow-lg shadow-indigo-600/20">
+                      <Button className="bg-[#378ADD] hover:bg-[#2866A0] text-white rounded-xl h-12 font-semibold shadow-sm">
                          View Full
                       </Button>
                    </div>
