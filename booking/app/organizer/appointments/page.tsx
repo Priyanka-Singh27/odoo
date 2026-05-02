@@ -177,10 +177,8 @@ export default function AppointmentTypesList() {
                 </div>
                 
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors">
-                      <MoreVertical className="w-4 h-4" />
-                    </button>
+                  <DropdownMenuTrigger className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors">
+                    <MoreVertical className="w-4 h-4" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48 p-1 rounded-lg border-slate-200">
                     <Link href={`/organizer/appointments/${apt.id}/edit`}>

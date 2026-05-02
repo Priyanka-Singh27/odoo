@@ -14,7 +14,7 @@ export async function resolveUser(): Promise<
   const token = cookieStore.get("auth_token")?.value;
   if (!token) return null;
 
-  const payload = verifyToken(token);
+  const payload = await verifyToken(token);
   if (!payload) return null;
 
   const row = db

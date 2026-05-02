@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     if (purpose === 'verify') {
       db.prepare('UPDATE users SET is_verified = 1 WHERE id = ?').run(user.id);
       
-      const token = signToken({ userId: user.id, email, role: user.role });
+      const token = await signToken({ userId: user.id, email, role: user.role });
       const response = NextResponse.json({ role: user.role }, { status: 200 });
 
       response.cookies.set('auth_token', token, {

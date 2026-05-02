@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     // Success
     console.log(`[login] ✅ Success! userId=${user.id} role=${user.role}`);
-    const token = signToken({ userId: user.id, email, role: user.role });
+    const token = await signToken({ userId: user.id, email, role: user.role });
     const response = NextResponse.json({ role: user.role }, { status: 200 });
 
     response.cookies.set('auth_token', token, {

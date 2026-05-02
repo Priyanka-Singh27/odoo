@@ -1,19 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
-
-// ---------- Edge-compatible JWT verify ----------
-const SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
-
-type TokenPayload = { userId: string; email: string; role: string };
-
-async function verifyTokenEdge(token: string): Promise<TokenPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, SECRET);
-    return payload as unknown as TokenPayload;
-  } catch {
-    return null;
-  }
-}
+import { verifyToken } from '@/lib/jwt';
 
 // Routes accessible without any auth
 const PUBLIC_ROUTES = [
@@ -34,6 +20,13 @@ const ROLE_DASHBOARDS: Record<string, string> = {
   admin: '/admin/dashboard',
 };
 
+// Which login page belongs to which role
+const LOGIN_PAGE_ROLE: Record<string, string> = {
+  '/login': 'customer',
+  '/organizer/login': 'organiser',
+  '/admin/login': 'admin',
+};
+
 // Routes that require a specific role
 const ROLE_PROTECTED: { prefix: string; role: string }[] = [
   { prefix: '/organizer', role: 'organiser' },
@@ -43,9 +36,9 @@ const ROLE_PROTECTED: { prefix: string; role: string }[] = [
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get('auth_token')?.value;
-  const payload = token ? await verifyTokenEdge(token) : null;
+  const payload = token ? await verifyToken(token) : null;
 
-  console.log(`[middleware] pathname=${pathname} hasToken=${!!token} payload=${JSON.stringify(payload)}`);
+  console.log(`[middleware] pathname=${pathname} hasToken=${!!token} role=${payload?.role ?? 'none'}`);
 
   // Always allow public-booking routes (share links)
   if (pathname.startsWith('/public-booking')) {
@@ -57,19 +50,30 @@ export async function middleware(req: NextRequest) {
 
   // If NOT logged in and hitting a protected route → redirect to login
   if (!payload && !isPublic) {
-    console.log(`[middleware] → NOT logged in + NOT public → redirect to /login`);
+    console.log(`[middleware] → not authenticated → redirect to /login`);
     const url = req.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  // If logged in and hitting a login/signup page → redirect to their dashboard
+  // If logged in and hitting a login/signup page:
   const isAuthPage = ['/login', '/signup', '/verify-otp', '/organizer/login', '/admin/login'].some(
     r => pathname === r || pathname.startsWith(r)
   );
+
   if (payload && isAuthPage) {
+    // Check if user is trying to access a login page for a DIFFERENT role → clear cookie so they can switch
+    const targetRole = LOGIN_PAGE_ROLE[pathname];
+    if (targetRole && targetRole !== payload.role) {
+      console.log(`[middleware] → switching portal: clearing session (current=${payload.role}, target=${targetRole})`);
+      const response = NextResponse.next();
+      response.cookies.delete('auth_token');
+      return response;
+    }
+
+    // Same role login page → redirect to their dashboard
     const dashboard = ROLE_DASHBOARDS[payload.role] || '/home';
-    console.log(`[middleware] → logged in + auth page → redirect to dashboard: ${dashboard} (role=${payload.role})`);
+    console.log(`[middleware] → already logged in as ${payload.role} → redirect to ${dashboard}`);
     return NextResponse.redirect(new URL(dashboard, req.url));
   }
 
@@ -78,13 +82,12 @@ export async function middleware(req: NextRequest) {
     for (const { prefix, role } of ROLE_PROTECTED) {
       if (pathname.startsWith(prefix) && payload.role !== role) {
         const dashboard = ROLE_DASHBOARDS[payload.role] || '/home';
-        console.log(`[middleware] → wrong role for ${prefix} (have=${payload.role}, need=${role}) → redirect to ${dashboard}`);
+        console.log(`[middleware] → wrong role for ${prefix} → redirect to ${dashboard}`);
         return NextResponse.redirect(new URL(dashboard, req.url));
       }
     }
   }
 
-  console.log('[middleware] → allowing through');
   return NextResponse.next();
 }
 

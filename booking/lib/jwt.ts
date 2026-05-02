@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
+import { SignJWT, jwtVerify } from 'jose';
 
-const SECRET = process.env.JWT_SECRET!; // must be in .env.local
+const SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
 
 export type JwtPayload = {
   userId: string;
@@ -8,13 +8,18 @@ export type JwtPayload = {
   role: 'customer' | 'organiser' | 'admin';
 };
 
-export function signToken(payload: JwtPayload): string {
-  return jwt.sign(payload, SECRET, { expiresIn: '7d' });
+export async function signToken(payload: JwtPayload): Promise<string> {
+  return new SignJWT(payload as unknown as Record<string, unknown>)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime('7d')
+    .setIssuedAt()
+    .sign(SECRET);
 }
 
-export function verifyToken(token: string): JwtPayload | null {
+export async function verifyToken(token: string): Promise<JwtPayload | null> {
   try {
-    return jwt.verify(token, SECRET) as JwtPayload;
+    const { payload } = await jwtVerify(token, SECRET);
+    return payload as unknown as JwtPayload;
   } catch {
     return null;
   }

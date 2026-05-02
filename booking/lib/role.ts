@@ -16,7 +16,7 @@ export async function resolveUserRole(): Promise<Role> {
   if (!token) return "customer";
   
   try {
-    const payload = verifyToken(token);
+    const payload = await verifyToken(token);
     if (!payload || !payload.role) return "customer";
     
     // Member of appointment.group_organiser -> role = 'organiser'
