@@ -1,26 +1,27 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT),
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
 export async function sendOtpEmail(to: string, otp: string, purpose: 'verify' | 'reset') {
   const subject = purpose === 'verify'
     ? 'Verify your Appointment App account'
     : 'Reset your Appointment App password';
 
-  const html = purpose === 'verify'
-    ? `<p>Your verification code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`
-    : `<p>Your password reset code is: <strong>${otp}</strong></p><p>This code expires in 10 minutes.</p>`;
+  const text = purpose === 'verify'
+    ? `Your verification code is: ${otp}\n\nThis code expires in 10 minutes.`
+    : `Your password reset code is: ${otp}\n\nThis code expires in 10 minutes.`;
 
-  try {
-    const result = await resend.emails.send({
-      from: 'noreply@resend.dev',
-      to,
-      subject,
-      html,
-    });
-    console.log('OTP email sent successfully:', result);
-  } catch (error) {
-    // Log but don't throw - allow signup/login to proceed even if email fails
-    console.error('Failed to send OTP email via Resend:', error);
-  }
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to,
+    subject,
+    text,
+  });
 }

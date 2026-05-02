@@ -1,6 +1,6 @@
-import { jwtVerify, SignJWT } from 'jose';
+import jwt from 'jsonwebtoken';
 
-const SECRET = new TextEncoder().encode(process.env.JWT_SECRET!); // must be in .env.local
+const SECRET = process.env.JWT_SECRET!; // must be in .env.local
 
 export type JwtPayload = {
   userId: string;
@@ -8,25 +8,14 @@ export type JwtPayload = {
   role: 'customer' | 'organiser' | 'admin';
 };
 
-export async function signToken(payload: JwtPayload): Promise<string> {
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setExpirationTime('7d')
-    .sign(SECRET);
+export function signToken(payload: JwtPayload): string {
+  return jwt.sign(payload, SECRET, { expiresIn: '7d' });
 }
 
-export async function verifyToken(token: string): Promise<JwtPayload | null> {
+export function verifyToken(token: string): JwtPayload | null {
   try {
-    const verified = await jwtVerify(token, SECRET);
-    const payload = verified.payload as JwtPayload;
-    console.log('[JWT] Token verified successfully:', { userId: payload.userId, role: payload.role });
-    return payload;
-  } catch (err) {
-    console.error('[JWT] Token verification failed:', {
-      error: (err as Error).message,
-      secret: SECRET ? `***set` : 'NOT SET',
-      token: token ? `${token.slice(0, 20)}...` : 'NOT PROVIDED'
-    });
+    return jwt.verify(token, SECRET) as JwtPayload;
+  } catch {
     return null;
   }
 }
