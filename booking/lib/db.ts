@@ -1,8 +1,10 @@
 import Database from 'better-sqlite3';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
+import bcrypt from 'bcryptjs';
 
-const dataDir = path.join(process.cwd(), "data");
-const dbPath = path.join(dataDir, "booking.sqlite");
+const dataDir = path.join(process.cwd(), 'data');
+const dbPath = path.join(dataDir, 'booking.sqlite');
 
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
@@ -14,18 +16,31 @@ const globalForDb = globalThis as unknown as {
 
 export const db = globalForDb.db ?? new Database(dbPath);
 
+function ensureColumn(table: string, column: string, definition: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
 if (!globalForDb.db) {
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
+  // db.pragma('journal_mode = WAL');  // Disabled for better real-time visibility in SQLite viewers
+  db.pragma('foreign_keys = ON');
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       full_name TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
-      role TEXT NOT NULL CHECK(role IN ('customer','organiser','admin','provider')),
+      role TEXT NOT NULL DEFAULT 'customer' CHECK(role IN ('customer','organiser','admin','provider')),
       is_active INTEGER NOT NULL DEFAULT 1,
-      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      password_hash TEXT,
+      is_verified INTEGER NOT NULL DEFAULT 0,
+      otp_code TEXT,
+      otp_expires_at INTEGER,
+      otp_purpose TEXT,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+      updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
     );
 
     CREATE TABLE IF NOT EXISTS providers (
@@ -102,35 +117,70 @@ if (!globalForDb.db) {
     );
   `);
 
-  const count = db.prepare("SELECT COUNT(*) as total FROM appointments").get() as { total: number };
-  if (count.total === 0) {
-    db.exec(`
-      INSERT INTO users (id, full_name, email, role) VALUES
-        ('usr_org_1', 'Maya Organiser', 'organiser@example.com', 'organiser'),
-        ('usr_cust_1', 'Rahul Customer', 'customer@example.com', 'customer'),
-        ('usr_doc_1', 'Dr. Amanda Clara', 'amanda@example.com', 'provider'),
-        ('usr_doc_2', 'Dr. Esther Howard', 'esther@example.com', 'provider');
+  ensureColumn('users', 'password_hash', 'TEXT');
+  ensureColumn('users', 'is_verified', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn('users', 'otp_code', 'TEXT');
+  ensureColumn('users', 'otp_expires_at', 'INTEGER');
+  ensureColumn('users', 'otp_purpose', 'TEXT');
+  ensureColumn('users', 'updated_at', "INTEGER NOT NULL DEFAULT (strftime(''s'',''now''))");
 
-      INSERT INTO providers (id, user_id, specialty) VALUES
-        ('prov_1', 'usr_doc_1', 'Psychology'),
-        ('prov_2', 'usr_doc_2', 'Pediatrics');
+  const now = Math.floor(Date.now() / 1000);
+  const adminPass = bcrypt.hashSync('Admin@12345', 12);
+  const orgPass = bcrypt.hashSync('Organiser@12345', 12);
+  const custPass = bcrypt.hashSync('Customer@12345', 12);
 
-      INSERT INTO appointments (id, organiser_id, name, description, duration, provider_count, is_published, manage_capacity, max_bookings_per_slot, advance_payment, manual_confirmation) VALUES
-        ('apt_psy_01', 'usr_org_1', 'Psychology Consultation', 'One-to-one consultation session', 30, 2, 1, 1, 5, 0, 0),
-        ('apt_ped_01', 'usr_org_1', 'Pediatric Checkup', 'General child health checkup', 45, 1, 1, 0, 1, 0, 1);
+  db.prepare(`
+    INSERT INTO users (id, full_name, email, role, is_active, password_hash, is_verified, created_at, updated_at)
+    VALUES (?, ?, ?, ?, 1, ?, 1, ?, ?)
+    ON CONFLICT(email) DO NOTHING
+  `).run('usr_admin_1', 'Platform Admin', 'admin@booking.local', 'admin', adminPass, now, now);
 
-      INSERT INTO appointment_providers (appointment_id, provider_id) VALUES
-        ('apt_psy_01', 'prov_1'),
-        ('apt_psy_01', 'prov_2'),
-        ('apt_ped_01', 'prov_2');
+  db.prepare(`
+    INSERT INTO users (id, full_name, email, role, is_active, password_hash, is_verified, created_at, updated_at)
+    VALUES (?, ?, ?, ?, 1, ?, 1, ?, ?)
+    ON CONFLICT(email) DO NOTHING
+  `).run('usr_org_1', 'Maya Organiser', 'organiser@booking.local', 'organiser', orgPass, now, now);
 
-      INSERT INTO slots (id, appointment_id, provider_id, slot_date, start_time, end_time, capacity_total, capacity_booked, status) VALUES
-        ('slot_1', 'apt_psy_01', 'prov_1', '2026-05-03', '09:00', '09:30', 5, 1, 'available'),
-        ('slot_2', 'apt_psy_01', 'prov_1', '2026-05-03', '09:30', '10:00', 5, 5, 'full'),
-        ('slot_3', 'apt_psy_01', 'prov_2', '2026-05-03', '10:00', '10:30', 5, 2, 'available'),
-        ('slot_4', 'apt_ped_01', 'prov_2', '2026-05-04', '11:00', '11:45', 1, 0, 'available');
-    `);
-  }
+  db.prepare(`
+    INSERT INTO users (id, full_name, email, role, is_active, password_hash, is_verified, created_at, updated_at)
+    VALUES (?, ?, ?, ?, 1, ?, 1, ?, ?)
+    ON CONFLICT(email) DO NOTHING
+  `).run('usr_cust_1', 'Rahul Customer', 'customer@booking.local', 'customer', custPass, now, now);
+
+  db.prepare(`
+    INSERT INTO users (id, full_name, email, role, is_active, password_hash, is_verified, created_at, updated_at)
+    VALUES (?, ?, ?, ?, 1, ?, 1, ?, ?)
+    ON CONFLICT(email) DO NOTHING
+  `).run('usr_doc_1', 'Dr. Amanda Clara', 'amanda@booking.local', 'provider', bcrypt.hashSync('Doctor@12345', 12), now, now);
+
+  db.prepare(`
+    INSERT INTO users (id, full_name, email, role, is_active, password_hash, is_verified, created_at, updated_at)
+    VALUES (?, ?, ?, ?, 1, ?, 1, ?, ?)
+    ON CONFLICT(email) DO NOTHING
+  `).run('usr_doc_2', 'Dr. Esther Howard', 'esther@booking.local', 'provider', bcrypt.hashSync('Doctor@12345', 12), now, now);
+
+  db.exec(`
+    INSERT OR IGNORE INTO providers (id, user_id, specialty) VALUES
+      ('prov_1', 'usr_doc_1', 'Psychology'),
+      ('prov_2', 'usr_doc_2', 'Pediatrics');
+
+    INSERT OR IGNORE INTO appointments (id, organiser_id, name, description, duration, provider_count, is_published, manage_capacity, max_bookings_per_slot, advance_payment, manual_confirmation) VALUES
+      ('apt_psy_01', 'usr_org_1', 'Psychology Consultation', 'One-to-one consultation session', 30, 2, 1, 1, 5, 0, 0),
+      ('apt_ped_01', 'usr_org_1', 'Pediatric Checkup', 'General child health checkup', 45, 1, 1, 0, 1, 0, 1);
+
+    INSERT OR IGNORE INTO appointment_providers (appointment_id, provider_id) VALUES
+      ('apt_psy_01', 'prov_1'),
+      ('apt_psy_01', 'prov_2'),
+      ('apt_ped_01', 'prov_2');
+
+    INSERT OR IGNORE INTO slots (id, appointment_id, provider_id, slot_date, start_time, end_time, capacity_total, capacity_booked, status) VALUES
+      ('slot_1', 'apt_psy_01', 'prov_1', '2026-05-03', '09:00', '09:30', 5, 1, 'available'),
+      ('slot_2', 'apt_psy_01', 'prov_1', '2026-05-03', '09:30', '10:00', 5, 5, 'full'),
+      ('slot_3', 'apt_psy_01', 'prov_2', '2026-05-03', '10:00', '10:30', 5, 2, 'available'),
+      ('slot_4', 'apt_ped_01', 'prov_2', '2026-05-04', '11:00', '11:45', 1, 0, 'available');
+  `);
 
   globalForDb.db = db;
 }
+
+export default db;

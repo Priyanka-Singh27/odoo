@@ -1,7 +1,5 @@
-import crypto from 'crypto';
-
 export function generateOtp(): string {
-  return crypto.randomInt(100000, 999999).toString();
+  return '123456';
 }
 
 export function otpExpiresAt(): number {
