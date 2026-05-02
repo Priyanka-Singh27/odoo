@@ -1,94 +1,29 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-
-type UserRow = {
-  id: string;
-  full_name: string;
-  email: string;
-  role: "customer" | "organiser" | "provider" | "admin";
-  is_active: number;
-  is_verified: number;
-  created_at: number;
-};
+import { useAdminUsers } from "@/hooks/use-admin-users";
+import type { AdminUser } from "@/features/admin/types";
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<UserRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const {
+    filtered,
+    loading,
+    error,
+    search,
+    roleFilter,
+    statusFilter,
+    setSearch,
+    setRoleFilter,
+    setStatusFilter,
+    updateRole,
+    toggleActive,
+  } = useAdminUsers();
 
-  const load = async () => {
-    setLoading(true);
-    const res = await fetch("/api/admin/users");
-    if (res.ok) {
-      const data = await res.json();
-      setUsers(data.data || []);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    void load();
-  }, []);
-
-  const filtered = useMemo(
-    () =>
-      users.filter((u) => {
-        const matchesSearch =
-          u.full_name.toLowerCase().includes(search.toLowerCase()) ||
-          u.email.toLowerCase().includes(search.toLowerCase());
-        const matchesRole = roleFilter === "all" || u.role === roleFilter;
-        const matchesStatus =
-          statusFilter === "all" ||
-          (statusFilter === "active" && u.is_active === 1) ||
-          (statusFilter === "inactive" && u.is_active === 0);
-        return matchesSearch && matchesRole && matchesStatus;
-      }),
-    [users, search, roleFilter, statusFilter]
-  );
-
-  const handleRoleChange = async (userId: string, role: UserRow["role"], name: string) => {
+  const handleRoleChange = async (userId: string, role: AdminUser["role"], name: string) => {
     if (role === "admin") {
       const ok = window.confirm(`Are you sure you want to grant admin access to ${name}?`);
       if (!ok) return;
     }
-
-    const previous = users;
-    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
-
-    const res = await fetch(`/api/admin/users/${userId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role }),
-    });
-
-    if (!res.ok) {
-      setUsers(previous);
-      setError("Failed to update user role. Please try again.");
-    }
-  };
-
-  const handleToggleActive = async (userId: string, currentState: boolean) => {
-    const previous = users;
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === userId ? { ...u, is_active: currentState ? 0 : 1 } : u
-      )
-    );
-
-    const res = await fetch(`/api/admin/users/${userId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ is_active: !currentState }),
-    });
-
-    if (!res.ok) {
-      setUsers(previous);
-      setError("Failed to update user status. Please try again.");
-    }
+    await updateRole(userId, role);
   };
 
   return (
@@ -171,7 +106,7 @@ export default function AdminUsersPage() {
                           onChange={(e) =>
                             void handleRoleChange(
                               user.id,
-                              e.target.value as UserRow["role"],
+                              e.target.value as AdminUser["role"],
                               user.full_name
                             )
                           }
@@ -201,7 +136,7 @@ export default function AdminUsersPage() {
                         {!isSelf && (
                           <button
                             onClick={() =>
-                              void handleToggleActive(user.id, user.is_active === 1)
+                              void toggleActive(user.id, user.is_active === 1)
                             }
                             className={`text-[11px] font-medium px-3 py-1 rounded-full border transition-colors ${
                               user.is_active

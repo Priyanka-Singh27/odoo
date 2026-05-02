@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const CHART_DATA = [
   { date: "May 01", bookings: 12 },

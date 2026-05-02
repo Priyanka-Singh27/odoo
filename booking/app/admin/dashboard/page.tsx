@@ -1,51 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { format } from "date-fns";
-
-type Stats = {
-  totalUsers: number;
-  totalProviders: number;
-  totalAppointments: number;
-  newUsersThisWeek: number;
-  newProvidersThisWeek: number;
-  appointmentsToday: number;
-};
-
-type RecentBooking = {
-  id: string;
-  customer_name: string;
-  service_name: string;
-  provider_name: string;
-  slot_date: string;
-  start_time: string;
-  status: string;
-};
+import { useAdminDashboard } from "@/hooks/use-admin-dashboard";
 
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [recent, setRecent] = useState<RecentBooking[]>([]);
-  const [loadingStats, setLoadingStats] = useState(true);
-  const [loadingRecent, setLoadingRecent] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoadingStats(true);
-      setLoadingRecent(true);
-      const [statsRes, recentRes] = await Promise.all([
-        fetch("/api/admin/stats"),
-        fetch("/api/admin/recent-bookings"),
-      ]);
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (recentRes.ok) {
-        const data = await recentRes.json();
-        setRecent(data.data || []);
-      }
-      setLoadingStats(false);
-      setLoadingRecent(false);
-    };
-    void load();
-  }, []);
+  const { stats, recent, loading, error } = useAdminDashboard();
 
   const kpis = [
     {
@@ -74,12 +33,16 @@ export default function AdminDashboardPage() {
           <div key={kpi.label} className="bg-white border border-slate-100 rounded-2xl p-5">
             <p className="text-[13px] text-slate-500">{kpi.label}</p>
             <p className="text-3xl font-semibold text-slate-900 mt-2">
-              {loadingStats ? <span className="inline-block h-8 w-20 bg-slate-100 animate-pulse rounded" /> : kpi.value}
+              {loading ? <span className="inline-block h-8 w-20 bg-slate-100 animate-pulse rounded" /> : kpi.value}
             </p>
             <p className="text-xs text-slate-500 mt-3">{kpi.trend}</p>
           </div>
         ))}
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-sm text-red-700">{error}</div>
+      )}
 
       <div className="bg-white border border-slate-100 rounded-2xl p-5">
         <h2 className="text-lg font-semibold text-slate-900 mb-4">Recent Activity</h2>
@@ -95,7 +58,7 @@ export default function AdminDashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {loadingRecent ? (
+              {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="border-b border-slate-50">
                     <td className="py-3"><span className="inline-block h-4 w-24 bg-slate-100 animate-pulse rounded" /></td>
