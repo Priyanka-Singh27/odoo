@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 interface DoctorCardProps {
   name: string;
@@ -40,9 +41,15 @@ export default function DoctorCard({
           </span>
         </div>
       </div>
-      <button className="w-full bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-xl py-2 mt-3 transition-colors">
+      <Button 
+        onClick={(e) => {
+          e.stopPropagation();
+          if (onClick) onClick();
+        }}
+        className="w-full bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-xl py-2 mt-3 transition-colors h-auto"
+      >
         Book an appointment
-      </button>
+      </Button>
     </div>
   );
 }

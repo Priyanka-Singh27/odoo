@@ -1,5 +1,7 @@
 import { Globe, MapPin, Star } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+
 export default function DoctorDetail({ onBook }: { onBook?: () => void }) {
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
@@ -17,12 +19,12 @@ export default function DoctorDetail({ onBook }: { onBook?: () => void }) {
             </span>
           </div>
         </div>
-        <button 
+        <Button 
           onClick={onBook}
-          className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl px-5 py-2.5 transition-colors"
+          className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl px-5 py-2.5 transition-colors h-auto"
         >
           Book an appointment
-        </button>
+        </Button>
       </div>
 
       {/* Info Grid */}

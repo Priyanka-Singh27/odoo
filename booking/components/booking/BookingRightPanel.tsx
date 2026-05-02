@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Calendar } from "@/components/ui/calendar";
 
+import { Button } from "@/components/ui/button";
+
 export default function BookingRightPanel({ onNext }: { onNext?: () => void }) {
   const [date, setDate] = useState<Date | undefined>(new Date());
   
@@ -74,12 +76,12 @@ export default function BookingRightPanel({ onNext }: { onNext?: () => void }) {
           })}
         </div>
         
-        <button 
+        <Button 
           onClick={onNext}
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-xl py-3 font-medium transition-colors mt-auto"
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-xl py-3 font-medium transition-colors mt-auto h-auto"
         >
           Book an appointment
-        </button>
+        </Button>
       </div>
     </div>
   );

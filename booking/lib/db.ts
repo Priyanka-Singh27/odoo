@@ -1,6 +1,5 @@
-import Database from "better-sqlite3";
-import fs from "node:fs";
-import path from "node:path";
+import Database from 'better-sqlite3';
+import path from 'path';
 
 const dataDir = path.join(process.cwd(), "data");
 const dbPath = path.join(dataDir, "booking.sqlite");
