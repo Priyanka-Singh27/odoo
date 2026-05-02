@@ -50,6 +50,19 @@ if (!globalForDb.db) {
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS resources (
+      id TEXT PRIMARY KEY,
+      organiser_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      capacity INTEGER NOT NULL DEFAULT 1,
+      location TEXT,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(organiser_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS appointments (
       id TEXT PRIMARY KEY,
       organiser_id TEXT NOT NULL,
@@ -74,6 +87,14 @@ if (!globalForDb.db) {
       FOREIGN KEY(provider_id) REFERENCES providers(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS appointment_resources (
+      appointment_id TEXT NOT NULL,
+      resource_id TEXT NOT NULL,
+      PRIMARY KEY(appointment_id, resource_id),
+      FOREIGN KEY(appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+      FOREIGN KEY(resource_id) REFERENCES resources(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS slots (
       id TEXT PRIMARY KEY,
       appointment_id TEXT NOT NULL,
@@ -89,12 +110,29 @@ if (!globalForDb.db) {
       UNIQUE(appointment_id, provider_id, slot_date, start_time)
     );
 
+    CREATE TABLE IF NOT EXISTS resource_slots (
+      id TEXT PRIMARY KEY,
+      appointment_id TEXT NOT NULL,
+      resource_id TEXT NOT NULL,
+      slot_date TEXT NOT NULL,
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      capacity_total INTEGER NOT NULL DEFAULT 1,
+      capacity_booked INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'available' CHECK(status IN ('available','full','blocked')),
+      FOREIGN KEY(appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+      FOREIGN KEY(resource_id) REFERENCES resources(id) ON DELETE CASCADE,
+      UNIQUE(appointment_id, resource_id, slot_date, start_time)
+    );
+
     CREATE TABLE IF NOT EXISTS bookings (
       id TEXT PRIMARY KEY,
       appointment_id TEXT NOT NULL,
       customer_id TEXT NOT NULL,
-      provider_id TEXT NOT NULL,
-      slot_id TEXT NOT NULL,
+      provider_id TEXT,
+      resource_id TEXT,
+      slot_id TEXT,
+      resource_slot_id TEXT,
       slot_date TEXT NOT NULL,
       start_time TEXT NOT NULL,
       end_time TEXT NOT NULL,
@@ -104,8 +142,11 @@ if (!globalForDb.db) {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
       FOREIGN KEY(customer_id) REFERENCES users(id) ON DELETE CASCADE,
-      FOREIGN KEY(provider_id) REFERENCES providers(id) ON DELETE CASCADE,
-      FOREIGN KEY(slot_id) REFERENCES slots(id) ON DELETE CASCADE
+      FOREIGN KEY(provider_id) REFERENCES providers(id) ON DELETE SET NULL,
+      FOREIGN KEY(resource_id) REFERENCES resources(id) ON DELETE SET NULL,
+      FOREIGN KEY(slot_id) REFERENCES slots(id) ON DELETE SET NULL,
+      FOREIGN KEY(resource_slot_id) REFERENCES resource_slots(id) ON DELETE SET NULL,
+      CHECK ((provider_id IS NOT NULL AND slot_id IS NOT NULL) OR (resource_id IS NOT NULL AND resource_slot_id IS NOT NULL))
     );
 
     CREATE TABLE IF NOT EXISTS booking_answers (
@@ -144,6 +185,8 @@ if (!globalForDb.db) {
   ensureColumn('users', 'updated_at', "INTEGER NOT NULL DEFAULT (strftime(''s'',''now''))");
   ensureColumn('appointments', 'appointment_type', "TEXT DEFAULT 'user'");
   ensureColumn('appointments', 'share_token', 'TEXT');
+  ensureColumn('bookings', 'resource_id', 'TEXT');
+  ensureColumn('bookings', 'resource_slot_id', 'TEXT');
 
   const now = Math.floor(Date.now() / 1000);
   const adminPass = bcrypt.hashSync('Admin@12345', 12);

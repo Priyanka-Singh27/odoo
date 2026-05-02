@@ -24,6 +24,20 @@ CREATE TABLE IF NOT EXISTS providers (
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Resource (equipment, room, facility, etc.) for resource-based appointments
+CREATE TABLE IF NOT EXISTS resources (
+  id TEXT PRIMARY KEY,
+  organiser_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  capacity INTEGER NOT NULL DEFAULT 1,
+  location TEXT,
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(organiser_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Appointment templates created by organiser
 CREATE TABLE IF NOT EXISTS appointments (
   id TEXT PRIMARY KEY,
@@ -50,6 +64,15 @@ CREATE TABLE IF NOT EXISTS appointment_providers (
   FOREIGN KEY(provider_id) REFERENCES providers(id) ON DELETE CASCADE
 );
 
+-- Many-to-many mapping between appointment and resource
+CREATE TABLE IF NOT EXISTS appointment_resources (
+  appointment_id TEXT NOT NULL,
+  resource_id TEXT NOT NULL,
+  PRIMARY KEY(appointment_id, resource_id),
+  FOREIGN KEY(appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+  FOREIGN KEY(resource_id) REFERENCES resources(id) ON DELETE CASCADE
+);
+
 -- Slot inventory per provider and appointment
 CREATE TABLE IF NOT EXISTS slots (
   id TEXT PRIMARY KEY,
@@ -66,13 +89,31 @@ CREATE TABLE IF NOT EXISTS slots (
   UNIQUE(appointment_id, provider_id, slot_date, start_time)
 );
 
--- Customer bookings for slots
+-- Resource slot inventory (for resource-based appointments)
+CREATE TABLE IF NOT EXISTS resource_slots (
+  id TEXT PRIMARY KEY,
+  appointment_id TEXT NOT NULL,
+  resource_id TEXT NOT NULL,
+  slot_date TEXT NOT NULL,
+  start_time TEXT NOT NULL,
+  end_time TEXT NOT NULL,
+  capacity_total INTEGER NOT NULL DEFAULT 1,
+  capacity_booked INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'available' CHECK(status IN ('available','full','blocked')),
+  FOREIGN KEY(appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
+  FOREIGN KEY(resource_id) REFERENCES resources(id) ON DELETE CASCADE,
+  UNIQUE(appointment_id, resource_id, slot_date, start_time)
+);
+
+-- Customer bookings for slots or resources (supports both provider and resource types)
 CREATE TABLE IF NOT EXISTS bookings (
   id TEXT PRIMARY KEY,
   appointment_id TEXT NOT NULL,
   customer_id TEXT NOT NULL,
-  provider_id TEXT NOT NULL,
-  slot_id TEXT NOT NULL,
+  provider_id TEXT,
+  resource_id TEXT,
+  slot_id TEXT,
+  resource_slot_id TEXT,
   slot_date TEXT NOT NULL,
   start_time TEXT NOT NULL,
   end_time TEXT NOT NULL,
@@ -82,8 +123,11 @@ CREATE TABLE IF NOT EXISTS bookings (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
   FOREIGN KEY(customer_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY(provider_id) REFERENCES providers(id) ON DELETE CASCADE,
-  FOREIGN KEY(slot_id) REFERENCES slots(id) ON DELETE CASCADE
+  FOREIGN KEY(provider_id) REFERENCES providers(id) ON DELETE SET NULL,
+  FOREIGN KEY(resource_id) REFERENCES resources(id) ON DELETE SET NULL,
+  FOREIGN KEY(slot_id) REFERENCES slots(id) ON DELETE SET NULL,
+  FOREIGN KEY(resource_slot_id) REFERENCES resource_slots(id) ON DELETE SET NULL,
+  CHECK ((provider_id IS NOT NULL AND slot_id IS NOT NULL) OR (resource_id IS NOT NULL AND resource_slot_id IS NOT NULL))
 );
 
 -- Dynamic form answers captured during booking
@@ -100,12 +144,17 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role_active ON users(role, is_active);
 CREATE INDEX IF NOT EXISTS idx_users_otp_lookup ON users(email, otp_purpose, otp_expires_at);
 CREATE INDEX IF NOT EXISTS idx_providers_user_id ON providers(user_id);
+CREATE INDEX IF NOT EXISTS idx_resources_organiser ON resources(organiser_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_organiser ON appointments(organiser_id);
 CREATE INDEX IF NOT EXISTS idx_slots_lookup ON slots(appointment_id, provider_id, slot_date, start_time);
 CREATE INDEX IF NOT EXISTS idx_slots_status ON slots(status);
+CREATE INDEX IF NOT EXISTS idx_resource_slots_lookup ON resource_slots(appointment_id, resource_id, slot_date, start_time);
+CREATE INDEX IF NOT EXISTS idx_resource_slots_status ON resource_slots(status);
 CREATE INDEX IF NOT EXISTS idx_bookings_customer ON bookings(customer_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_bookings_slot ON bookings(slot_id);
+CREATE INDEX IF NOT EXISTS idx_bookings_resource_slot ON bookings(resource_slot_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_provider_date ON bookings(provider_id, slot_date, start_time);
+CREATE INDEX IF NOT EXISTS idx_bookings_resource_date ON bookings(resource_id, slot_date, start_time);
 CREATE INDEX IF NOT EXISTS idx_booking_answers_booking ON booking_answers(booking_id);
 
 -- Admin audit trail for RBAC accountability
