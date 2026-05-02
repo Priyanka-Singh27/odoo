@@ -58,7 +58,10 @@ export default function BookingRightPanel({ onNext }: { onNext?: () => void }) {
             return (
               <button
                 key={slot}
-                onClick={() => setSelectedSlot(slot)}
+                onClick={() => {
+                  setSelectedSlot(slot);
+                  if (onNext) onNext();
+                }}
                 className={`slot-pill px-4 py-2 rounded-xl text-sm font-medium border text-center ${
                   isSelected
                     ? "selected"

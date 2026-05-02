@@ -39,13 +39,13 @@ export default function AppHeader() {
           <Bell className="w-5 h-5" />
           <span className="absolute top-0 right-0.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
         </button>
-        <div className="flex items-center gap-2 cursor-pointer border-l border-slate-200 pl-5">
+        <Link href="/profile" className="flex items-center gap-2 cursor-pointer border-l border-slate-200 pl-5 hover:bg-slate-50 transition-colors h-full px-2">
           <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
             <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="Avatar" className="w-full h-full object-cover" />
           </div>
           <span className="text-sm font-medium text-slate-700">Cameron</span>
           <ChevronDown className="w-4 h-4 text-slate-400" />
-        </div>
+        </Link>
       </div>
     </header>
   );

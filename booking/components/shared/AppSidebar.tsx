@@ -28,18 +28,18 @@ export default function AppSidebar() {
         <Calendar className="w-5 h-5" />
       </Link>
       
-      <Link href="/messages" className={getLinkClasses("/messages")}>
-        {isActive("/messages") && <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full" />}
+      <Link href="/organiser/bookings" className={getLinkClasses("/organiser/bookings")}>
+        {isActive("/organiser/bookings") && <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full" />}
         <MessageSquare className="w-5 h-5" />
       </Link>
       
-      <Link href="/admin/users" className={getLinkClasses("/admin")}>
-        {isActive("/admin") && <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full" />}
+      <Link href="/organiser/team" className={getLinkClasses("/organiser/team")}>
+        {isActive("/organiser/team") && <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full" />}
         <Users className="w-5 h-5" />
       </Link>
       
       <div className="mt-auto">
-        <Link href="/settings" className={getLinkClasses("/settings")}>
+        <Link href="/organiser/settings" className={getLinkClasses("/organiser/settings")}>
           <Settings className="w-5 h-5" />
         </Link>
       </div>

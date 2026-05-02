@@ -1,6 +1,6 @@
 import { Globe, MapPin, Star } from "lucide-react";
 
-export default function DoctorDetail() {
+export default function DoctorDetail({ onBook }: { onBook?: () => void }) {
   return (
     <div className="flex-1 overflow-y-auto p-6 bg-white rounded-2xl shadow-sm border border-slate-100">
       {/* Header */}
@@ -17,7 +17,10 @@ export default function DoctorDetail() {
             </span>
           </div>
         </div>
-        <button className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl px-5 py-2.5 transition-colors">
+        <button 
+          onClick={onBook}
+          className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl px-5 py-2.5 transition-colors"
+        >
           Book an appointment
         </button>
       </div>

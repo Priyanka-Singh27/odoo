@@ -1,8 +1,13 @@
+"use client";
+
+import { useRouter } from "next/navigation";
 import DoctorCard from "@/components/booking/DoctorCard";
 import DoctorDetail from "@/components/booking/DoctorDetail";
 import BookingRightPanel from "@/components/booking/BookingRightPanel";
 
 export default function CustomerHome() {
+  const router = useRouter();
+
   const categories = [
     "Cardiology", "Psychology", "Traumatology", "Pediatrics", 
     "Anesthiology", "Ophthalmology", "Dentistry", "General Diagnosis", "Neuro Surgery"
@@ -50,6 +55,7 @@ export default function CustomerHome() {
                 imageUrl="https://i.pravatar.cc/150?u=amanda" 
                 specialtyChip="Psychology" 
                 isActive={true} 
+                onClick={() => router.push('/book/123')}
               />
               <DoctorCard 
                 name="Esther Howard" 
@@ -58,6 +64,7 @@ export default function CustomerHome() {
                 imageUrl="https://i.pravatar.cc/150?u=esther" 
                 specialtyChip="Pediatrics" 
                 isActive={false} 
+                onClick={() => router.push('/book/124')}
               />
               <DoctorCard 
                 name="Ralph Edwards" 
@@ -66,16 +73,17 @@ export default function CustomerHome() {
                 imageUrl="https://i.pravatar.cc/150?u=ralph" 
                 specialtyChip="Cardiology" 
                 isActive={false} 
+                onClick={() => router.push('/book/125')}
               />
             </div>
           </div>
 
           {/* Doctor Detail */}
-          <DoctorDetail />
+          <DoctorDetail onBook={() => router.push('/book/123')} />
         </div>
 
         {/* Right Panel */}
-        <BookingRightPanel />
+        <BookingRightPanel onNext={() => router.push('/book/123')} />
       </div>
     </div>
   );
