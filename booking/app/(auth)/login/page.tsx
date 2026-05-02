@@ -50,7 +50,17 @@ export default function LoginPage() {
           router.push(resData.redirect);
         }
       } else {
-        router.refresh();
+        // Login successful - redirect based on role
+        const role = resData.role;
+        let dashboardUrl = '/home';
+        
+        if (role === 'organiser') {
+          dashboardUrl = '/organiser/appointments';
+        } else if (role === 'admin') {
+          dashboardUrl = '/admin/dashboard';
+        }
+        
+        router.push(dashboardUrl);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
