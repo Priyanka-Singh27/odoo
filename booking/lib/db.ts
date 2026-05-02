@@ -75,6 +75,8 @@ if (!globalForDb.db) {
       max_bookings_per_slot INTEGER NOT NULL DEFAULT 1,
       advance_payment INTEGER NOT NULL DEFAULT 0,
       manual_confirmation INTEGER NOT NULL DEFAULT 0,
+      location TEXT,
+      appointment_type TEXT NOT NULL DEFAULT 'user',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(organiser_id) REFERENCES users(id) ON DELETE CASCADE
     );
@@ -184,6 +186,7 @@ if (!globalForDb.db) {
   ensureColumn('users', 'otp_purpose', 'TEXT');
   ensureColumn('users', 'updated_at', "INTEGER NOT NULL DEFAULT (strftime(''s'',''now''))");
   ensureColumn('appointments', 'appointment_type', "TEXT DEFAULT 'user'");
+  ensureColumn('appointments', 'location', 'TEXT');
   ensureColumn('appointments', 'share_token', 'TEXT');
   ensureColumn('bookings', 'resource_id', 'TEXT');
   ensureColumn('bookings', 'resource_slot_id', 'TEXT');

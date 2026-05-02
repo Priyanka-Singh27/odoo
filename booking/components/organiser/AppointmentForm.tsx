@@ -540,7 +540,7 @@ export default function AppointmentForm({ id }: { id?: string }) {
                        </div>
                        <div className="w-24 space-y-2">
                           <Label className="text-[13px] font-semibold text-slate-700">Currency</Label>
-                          <Select value={currency} onValueChange={setCurrency}>
+                          <Select value={currency} onValueChange={(val) => val && setCurrency(val)}>
                             <SelectTrigger className="bg-slate-50 border-slate-200 rounded-xl h-11 text-[13px]">
                                <SelectValue />
                             </SelectTrigger>

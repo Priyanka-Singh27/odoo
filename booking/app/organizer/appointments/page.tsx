@@ -281,10 +281,8 @@ export default function AppointmentTypesList() {
                       <Eye className="w-3.5 h-3.5 mr-1.5" /> Preview
                     </Button>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600">
+                      <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors">
                           <MoreVertical className="w-4 h-4" />
-                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40 rounded-xl border-slate-100">
                         <DropdownMenuItem 
@@ -335,8 +333,7 @@ export default function AppointmentTypesList() {
         <BookingFlowModal
           isOpen={!!previewId}
           onClose={() => setPreviewId(null)}
-          appointmentId={previewId}
-          readOnly={true}
+          appointment={filtered.find(a => a.id === previewId) ?? null}
         />
       )}
 
