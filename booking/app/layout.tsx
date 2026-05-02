@@ -7,6 +7,7 @@ export const metadata: Metadata = {
 };
 
 import { Toaster } from "@/components/ui/sonner";
+import { RoleProvider } from "@/hooks/use-role";
 
 export default function RootLayout({
   children,
@@ -16,7 +17,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased font-sans">
       <body className="min-h-full flex flex-col">
-        {children}
+        <RoleProvider>
+          {children}
+        </RoleProvider>
         <Toaster />
       </body>
     </html>

@@ -1,10 +1,49 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { resolveUserRole } from "@/lib/role";
+
+export async function GET(req: NextRequest) {
+  const role = await resolveUserRole();
+  if (role !== 'organiser' && role !== 'admin') {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get("status");
+  const staff = searchParams.get("staff");
+
+  let query = `
+    SELECT b.*, u.full_name as customer_name, u.email as customer_email, 
+           a.name as appointment_name, p_u.full_name as provider_name
+    FROM bookings b
+    JOIN users u ON b.customer_id = u.id
+    JOIN appointments a ON b.appointment_id = a.id
+    JOIN providers p ON b.provider_id = p.id
+    JOIN users p_u ON p.user_id = p_u.id
+    WHERE 1=1
+  `;
+
+  const params: any[] = [];
+  if (status) {
+    query += " AND b.status = ?";
+    params.push(status);
+  }
+  if (staff) {
+    query += " AND b.provider_id = ?";
+    params.push(staff);
+  }
+
+  query += " ORDER BY b.slot_date DESC, b.start_time DESC";
+
+  const rows = db.prepare(query).all(...params);
+
+  return NextResponse.json({ data: rows });
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { appointmentId, providerId, slotId, customerId = "usr_cust_1", peopleCount = 1 } = body;
+  const { appointmentId, providerId, slotId, customerId = "usr_cust_1", peopleCount = 1, answers = {} } = body;
 
   if (!appointmentId || !providerId || !slotId) {
     return NextResponse.json({ error: "appointmentId, providerId, slotId are required" }, { status: 400 });
@@ -40,6 +79,13 @@ export async function POST(req: NextRequest) {
 
     db.prepare(`INSERT INTO bookings (id, appointment_id, customer_id, provider_id, slot_id, slot_date, start_time, end_time, people_count, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(bookingId, appointmentId, customerId, providerId, slotId, slot.slot_date, slot.start_time, slot.end_time, peopleCount, status);
+    
+    // Insert answers
+    const insertAnswer = db.prepare(`INSERT INTO booking_answers (id, booking_id, question_key, answer_value) VALUES (?, ?, ?, ?)`);
+    Object.entries(answers).forEach(([key, val]) => {
+      insertAnswer.run(randomUUID(), bookingId, key, String(val));
+    });
+
     db.prepare("UPDATE slots SET status = 'full' WHERE id = ? AND capacity_booked >= capacity_total").run(slotId);
   });
   tx();

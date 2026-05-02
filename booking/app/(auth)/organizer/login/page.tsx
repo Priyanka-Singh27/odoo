@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+export default function OrganizerLoginPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +77,8 @@ export default function LoginPage() {
         </div>
       </div>
       
-      <h2 className="text-2xl font-bold text-slate-900 mb-6 lg:text-left text-center">Sign in to your account</h2>
+      <h2 className="text-2xl font-bold text-slate-900 mb-2 lg:text-left text-center">Organizer Login</h2>
+      <p className="text-slate-500 mb-6 lg:text-left text-center text-sm">Sign in to manage your appointments and schedule.</p>
       
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-2">
@@ -132,13 +133,6 @@ export default function LoginPage() {
           Log In
         </Button>
       </form>
-      
-      <p className="mt-6 text-center text-sm text-slate-600">
-        Don't have an account?{" "}
-        <Link href="/signup" className="text-blue-600 hover:text-blue-500 font-medium">
-          Sign up &rarr;
-        </Link>
-      </p>
     </div>
   );
 }

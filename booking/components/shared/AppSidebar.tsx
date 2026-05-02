@@ -1,45 +1,52 @@
 "use client";
 
-import { LayoutGrid, Calendar, MessageSquare, Users, Settings } from "lucide-react";
+import { LayoutGrid, Calendar, History, UserCircle, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export default function AppSidebar() {
   const pathname = usePathname() || "";
 
-  const isActive = (path: string) => pathname.startsWith(path);
-
-  const getLinkClasses = (path: string) => {
-    const active = isActive(path);
-    return `p-3 rounded-xl transition-colors relative ${
-      active ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/10"
-    }`;
-  };
+  const navItems = [
+    { href: "/home", icon: LayoutGrid, label: "Explore" },
+    { href: "/appointments", icon: Calendar, label: "Schedule" },
+    { href: "/history", icon: History, label: "Activity" },
+    { href: "/profile", icon: UserCircle, label: "Profile" },
+  ];
 
   return (
-    <aside className="w-16 bg-[#0F172A] flex flex-col items-center py-6 shrink-0 h-full gap-6">
-      <Link href="/home" className={getLinkClasses("/home")}>
-        {isActive("/home") && <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full" />}
-        <LayoutGrid className="w-5 h-5" />
-      </Link>
+    <aside className="w-16 sm:w-20 bg-white flex flex-col items-center py-6 shrink-0 h-full border-r border-slate-200 z-40">
+      <div className="flex flex-col items-center gap-2 w-full px-2">
+        {navItems.map((item) => {
+          const active = pathname === item.href || (item.href !== '/home' && pathname.startsWith(item.href));
+          return (
+            <Link 
+              key={item.href}
+              href={item.href} 
+              title={item.label}
+              className={cn(
+                "group relative w-12 h-12 flex items-center justify-center rounded-lg transition-colors",
+                active 
+                  ? "bg-blue-50 text-blue-600" 
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+              )}
+            >
+              <item.icon className="w-5 h-5" />
+              {active && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 rounded-r-md" />
+              )}
+            </Link>
+          );
+        })}
+      </div>
       
-      <Link href="/organiser/appointments" className={getLinkClasses("/organiser")}>
-        {isActive("/organiser") && <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full" />}
-        <Calendar className="w-5 h-5" />
-      </Link>
-      
-      <Link href="/organiser/bookings" className={getLinkClasses("/organiser/bookings")}>
-        {isActive("/organiser/bookings") && <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full" />}
-        <MessageSquare className="w-5 h-5" />
-      </Link>
-      
-      <Link href="/organiser/team" className={getLinkClasses("/organiser/team")}>
-        {isActive("/organiser/team") && <div className="absolute left-[-12px] top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r-full" />}
-        <Users className="w-5 h-5" />
-      </Link>
-      
-      <div className="mt-auto">
-        <Link href="/organiser/settings" className={getLinkClasses("/organiser/settings")}>
+      <div className="mt-auto flex flex-col items-center gap-2 w-full px-2">
+        <Link 
+          href="/settings" 
+          title="Settings"
+          className="group w-12 h-12 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+        >
           <Settings className="w-5 h-5" />
         </Link>
       </div>
