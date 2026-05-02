@@ -3,21 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  ArrowLeft, 
-  Upload, 
-  X, 
-  Plus, 
-  GripVertical, 
-  Trash2, 
-  Clock, 
-  Save, 
-  Eye, 
-  Send,
-  Loader2,
-  Users as UsersIcon,
-  Package,
-  Calendar,
-  CheckCircle2
+  ArrowLeft, Upload, X, Plus, GripVertical, Trash2, Clock, Save, Eye, Send, Loader2,
+  Users as UsersIcon, Package, Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,9 +12,23 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import AppointmentSidebar from "@/components/booking/AppointmentSidebar";
+
+// DND Kit
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent
+} from '@dnd-kit/core';
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Question {
   id: string;
@@ -43,11 +44,92 @@ interface WorkingHour {
   to: string;
 }
 
+// Sortable Item Component
+function SortableQuestion({ 
+  q, idx, onUpdate, onRemove 
+}: { 
+  q: Question; idx: number; 
+  onUpdate: (id: string, updates: Partial<Question>) => void;
+  onRemove: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: q.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1 : 0,
+    position: "relative" as const,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style} 
+      className={cn(
+        "flex gap-4 p-5 bg-white border rounded-2xl group transition-colors",
+        isDragging ? "border-[#378ADD] shadow-md z-10" : "border-slate-100 hover:border-slate-200"
+      )}
+    >
+      <div 
+        {...attributes} 
+        {...listeners}
+        className="pt-3 cursor-grab text-slate-400 hover:text-slate-600 focus:outline-none"
+      >
+        <GripVertical className="w-5 h-5" />
+      </div>
+      <div className="flex-1 grid md:grid-cols-12 gap-4 items-end">
+        <div className="md:col-span-5 space-y-2">
+          <Label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Question Text</Label>
+          <Input 
+            value={q.text}
+            onChange={(e) => onUpdate(q.id, { text: e.target.value })}
+            className="bg-slate-50 border-slate-200 rounded-lg h-10 text-[13px] text-slate-900"
+          />
+        </div>
+        <div className="md:col-span-4 space-y-2">
+          <Label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Type</Label>
+          <Select 
+            value={q.type}
+            onValueChange={(val: any) => onUpdate(q.id, { type: val })}
+          >
+            <SelectTrigger className="bg-slate-50 border-slate-200 rounded-lg h-10 text-[13px] text-slate-900">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-white border-slate-200">
+              <SelectItem value="short_text">Short Text</SelectItem>
+              <SelectItem value="long_text">Long Text</SelectItem>
+              <SelectItem value="multi_choice">Multiple Choice</SelectItem>
+              <SelectItem value="checkbox">Checkbox</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="md:col-span-2 flex flex-col items-center gap-3 mb-2">
+          <Label className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Required</Label>
+          <Switch 
+            checked={q.required}
+            onCheckedChange={(checked) => onUpdate(q.id, { required: checked })}
+          />
+        </div>
+        <div className="md:col-span-1 pb-1 flex justify-end">
+          <button 
+            onClick={() => onRemove(q.id)}
+            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AppointmentForm({ id }: { id?: string }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showExitDialog, setShowExitDialog] = useState(false);
 
   // Form State
   const [name, setName] = useState("");
@@ -72,86 +154,107 @@ export default function AppointmentForm({ id }: { id?: string }) {
   const [slotCreation, setSlotCreation] = useState<"auto" | "manual">("auto");
   const [maxBookings, setMaxBookings] = useState("1");
   const [manageCapacity, setManageCapacity] = useState(false);
-  const [maxPeople, setMaxPeople] = useState("10");
   const [advancePayment, setAdvancePayment] = useState(false);
-  const [price, setPrice] = useState("1000");
+  const [price, setPrice] = useState("0");
+  const [currency, setCurrency] = useState("USD");
   const [manualConfirmation, setManualConfirmation] = useState(false);
   const [assignmentType, setAssignmentType] = useState<"auto" | "manual">("auto");
   
   const [questions, setQuestions] = useState<Question[]>([]);
   const [confirmationMessage, setConfirmationMessage] = useState("Thank you for your trust, we look forward to meeting you.");
 
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
   useEffect(() => {
-    // Fetch staff
-    fetch("/api/staff").then(res => res.json()).then(data => setAvailableStaff(data));
+    fetch("/api/staff").then(res => res.json()).then(data => setAvailableStaff(data || []));
 
     if (id) {
-      // Fetch existing appointment
+      setIsLoading(true);
       fetch(`/api/appointments/${id}`).then(res => res.json()).then(data => {
-        setName(data.name);
-        setDescription(data.description);
-        setDuration(data.duration.toString());
-        setManualConfirmation(data.manual_confirmation === 1);
-        // ... populate other fields ...
+        setName(data.name || "");
+        setDescription(data.description || "");
+        setDuration(data.duration?.toString() || "30");
+        setManualConfirmation(data.manual_confirmation === 1 || data.manual_confirmation === true);
+        setIsDirty(false);
+        setIsLoading(false);
       });
     }
   }, [id]);
 
-  const handleAddStaff = (staffId: string) => {
-    const staff = availableStaff.find(s => s.id === staffId);
-    if (staff && !assignedStaff.some(s => s.id === staffId)) {
-      setAssignedStaff([...assignedStaff, { id: staff.id, name: staff.full_name }]);
+  // Track dirty state
+  useEffect(() => {
+    if (name || description || assignedStaff.length > 0) setIsDirty(true);
+  }, [name, description, duration, location, assignedStaff, questions]);
+
+  const handleBack = () => {
+    if (isDirty) {
+      setShowExitDialog(true);
+    } else {
+      router.back();
     }
   };
 
-  const handleRemoveStaff = (staffId: string) => {
-    setAssignedStaff(assignedStaff.filter(s => s.id !== staffId));
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setQuestions((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id);
+        const newIndex = items.findIndex((i) => i.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
   };
 
-  const handleAddQuestion = () => {
-    setQuestions([...questions, {
-      id: Math.random().toString(36).substr(2, 9),
-      text: "",
-      type: "short_text",
-      required: false
-    }]);
+  const updateQuestion = (qId: string, updates: Partial<Question>) => {
+    setQuestions(questions.map(q => q.id === qId ? { ...q, ...updates } : q));
   };
 
-  const handleRemoveQuestion = (qId: string) => {
+  const removeQuestion = (qId: string) => {
     setQuestions(questions.filter(q => q.id !== qId));
   };
 
   const handleSave = async (isPublish: boolean) => {
     setIsSaving(true);
     try {
+      const payload = {
+        name,
+        description,
+        duration: parseInt(duration),
+        appointment_type: type,
+        isPublished: isPublish,
+        manualConfirmation,
+        manage_capacity: manageCapacity,
+        max_bookings_per_slot: parseInt(maxBookings),
+        advance_payment: advancePayment,
+      };
+
       const res = await fetch(id ? `/api/appointments/${id}` : "/api/appointments", {
         method: id ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          description,
-          duration: parseInt(duration),
-          isPublished: isPublish,
-          manualConfirmation,
-          // ... other fields ...
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
+        setIsDirty(false);
         toast.success(isPublish ? "Appointment published successfully" : "Appointment saved as draft");
-        router.push("/organiser/appointments");
+        router.push("/organizer/appointments");
+      } else {
+        toast.error("Failed to save appointment");
       }
     } catch (e) {
-      toast.error("Failed to save appointment");
+      toast.error("An error occurred");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const Section = ({ title, children, className }: { title: string, children: React.ReactNode, className?: string }) => (
-    <div className={cn("bg-[#111827] border border-white/5 rounded-[32px] p-8 space-y-6 shadow-xl", className)}>
-      <h2 className="text-xl font-bold text-white flex items-center gap-3">
-        <div className="w-1.5 h-6 bg-indigo-500 rounded-full" />
+  const Section = ({ title, children }: { title: string, children: React.ReactNode }) => (
+    <div className="bg-white border border-slate-100 rounded-2xl p-8 space-y-6 shadow-sm">
+      <h2 className="text-lg font-bold text-slate-900 flex items-center gap-3">
+        <div className="w-1.5 h-5 bg-[#378ADD] rounded-full" />
         {title}
       </h2>
       <div className="space-y-6">{children}</div>
@@ -159,83 +262,83 @@ export default function AppointmentForm({ id }: { id?: string }) {
   );
 
   return (
-    <div className="max-w-4xl mx-auto pb-32 animate-in fade-in slide-in-from-bottom-8 duration-700">
+    <div className="max-w-4xl mx-auto pb-32">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <button 
-          onClick={() => router.back()}
-          className="p-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all"
+          onClick={handleBack}
+          className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"
         >
-          <ArrowLeft className="w-6 h-6" />
+          <ArrowLeft className="w-5 h-5" />
         </button>
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             {id ? "Edit Appointment" : "Create New Appointment"}
           </h1>
-          <p className="text-slate-400 mt-1 text-sm font-medium">Configure your booking flow and rules</p>
+          <p className="text-slate-500 mt-1 text-[13px]">Configure your booking flow and rules</p>
         </div>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-6">
         {/* Section A: Basic Info */}
         <Section title="Basic Information">
           <div className="grid gap-6">
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-slate-300 font-bold ml-1">Appointment Name</Label>
+              <Label htmlFor="name" className="text-[13px] font-semibold text-slate-700">Appointment Name</Label>
               <Input 
                 id="name" 
                 value={name} 
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Dental Care, Tennis Court"
-                className="bg-white/5 border-white/10 rounded-2xl h-12 text-white focus:border-indigo-500/50"
+                placeholder="e.g. Initial Consultation"
+                className="bg-slate-50 border-slate-200 rounded-xl h-11 text-[13px] text-slate-900 focus:bg-white"
               />
             </div>
             
             <div className="space-y-2">
-              <Label className="text-slate-300 font-bold ml-1">Cover Image</Label>
-              <div className="border-2 border-dashed border-white/10 rounded-[32px] p-12 text-center hover:border-indigo-500/30 transition-all bg-white/[0.01] group cursor-pointer">
-                 <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:bg-indigo-500/10 transition-colors">
-                    <Upload className="w-8 h-8 text-slate-500 group-hover:text-indigo-400 transition-colors" />
+              <Label className="text-[13px] font-semibold text-slate-700">Cover Image</Label>
+              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center hover:border-[#378ADD] hover:bg-blue-50/50 transition-all cursor-pointer">
+                 <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-3 border border-slate-100">
+                    <Upload className="w-5 h-5 text-slate-400" />
                  </div>
-                 <p className="text-white font-bold">Click or drag to upload image</p>
-                 <p className="text-slate-500 text-xs mt-1 font-medium">PNG, JPG up to 10MB</p>
+                 <p className="text-[13px] font-medium text-slate-700">Click or drag to upload image</p>
+                 <p className="text-slate-400 text-[12px] mt-1">PNG, JPG up to 5MB</p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="intro" className="text-slate-300 font-bold ml-1">Introduction</Label>
+              <Label htmlFor="intro" className="text-[13px] font-semibold text-slate-700">Introduction</Label>
               <textarea 
                 id="intro"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition-all placeholder:text-slate-600"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-[13px] text-slate-900 focus:bg-white focus:ring-2 focus:ring-[#378ADD]/20 focus:border-[#378ADD] outline-none transition-all placeholder:text-slate-400"
                 placeholder="Describe what this appointment is about..."
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="duration" className="text-slate-300 font-bold ml-1">Duration (minutes)</Label>
+                <Label htmlFor="duration" className="text-[13px] font-semibold text-slate-700">Duration (minutes)</Label>
                 <div className="relative">
                   <Input 
                     id="duration" 
                     type="number"
                     value={duration}
                     onChange={(e) => setDuration(e.target.value)}
-                    className="bg-white/5 border-white/10 rounded-2xl h-12 text-white pl-12"
+                    className="bg-slate-50 border-slate-200 rounded-xl h-11 text-[13px] text-slate-900 pl-11"
                   />
-                  <Clock className="w-5 h-5 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2" />
+                  <Clock className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="location" className="text-slate-300 font-bold ml-1">Location</Label>
+                <Label htmlFor="location" className="text-[13px] font-semibold text-slate-700">Location</Label>
                 <Input 
                   id="location" 
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="e.g. Doctor's Office, Zoom"
-                  className="bg-white/5 border-white/10 rounded-2xl h-12 text-white"
+                  className="bg-slate-50 border-slate-200 rounded-xl h-11 text-[13px] text-slate-900"
                 />
               </div>
             </div>
@@ -246,55 +349,56 @@ export default function AppointmentForm({ id }: { id?: string }) {
         <Section title="Type & Providers">
           <div className="space-y-6">
             <div className="space-y-3">
-              <Label className="text-slate-300 font-bold ml-1">Appointment Type</Label>
+              <Label className="text-[13px] font-semibold text-slate-700">Appointment Type</Label>
               <RadioGroup value={type} onValueChange={(val: any) => { setType(val); setAssignedStaff([]); }} className="flex gap-4">
                 <div 
                   className={cn(
-                    "flex-1 flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer",
-                    type === 'user' ? "bg-indigo-600/10 border-indigo-500/50 text-white" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+                    "flex-1 flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer",
+                    type === 'user' ? "bg-blue-50 border-[#378ADD] text-[#378ADD]" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                   )}
                   onClick={() => { setType('user'); setAssignedStaff([]); }}
                 >
-                  <RadioGroupItem value="user" id="type-user" className="hidden" />
-                  <UsersIcon className={cn("w-5 h-5", type === 'user' ? "text-indigo-400" : "text-slate-500")} />
-                  <span className="font-bold text-[15px]">User (Staff)</span>
+                  <UsersIcon className={cn("w-5 h-5", type === 'user' ? "text-[#378ADD]" : "text-slate-400")} />
+                  <span className="font-semibold text-[14px] text-slate-900">User (Staff)</span>
                 </div>
                 <div 
                   className={cn(
-                    "flex-1 flex items-center gap-3 p-4 rounded-2xl border transition-all cursor-pointer",
-                    type === 'resource' ? "bg-indigo-600/10 border-indigo-500/50 text-white" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
+                    "flex-1 flex items-center gap-3 p-4 rounded-xl border transition-all cursor-pointer",
+                    type === 'resource' ? "bg-blue-50 border-[#378ADD] text-[#378ADD]" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                   )}
                   onClick={() => { setType('resource'); setAssignedStaff([]); }}
                 >
-                  <RadioGroupItem value="resource" id="type-resource" className="hidden" />
-                  <Package className={cn("w-5 h-5", type === 'resource' ? "text-indigo-400" : "text-slate-500")} />
-                  <span className="font-bold text-[15px]">Resource</span>
+                  <Package className={cn("w-5 h-5", type === 'resource' ? "text-[#378ADD]" : "text-slate-400")} />
+                  <span className="font-semibold text-[14px] text-slate-900">Resource</span>
                 </div>
               </RadioGroup>
             </div>
 
             <div className="space-y-3">
-              <Label className="text-slate-300 font-bold ml-1">
+              <Label className="text-[13px] font-semibold text-slate-700">
                 Assign {type === 'user' ? 'Staff' : 'Resources'}
               </Label>
-              <Select onValueChange={handleAddStaff}>
-                <SelectTrigger className="bg-white/5 border-white/10 rounded-2xl h-12 text-white">
+              <Select onValueChange={(val) => {
+                const staff = availableStaff.find(s => s.id === val);
+                if (staff && !assignedStaff.some(s => s.id === val)) {
+                  setAssignedStaff([...assignedStaff, { id: staff.id, name: staff.full_name }]);
+                }
+              }}>
+                <SelectTrigger className="bg-slate-50 border-slate-200 rounded-xl h-11 text-[13px] text-slate-900">
                   <SelectValue placeholder={`Search and add ${type === 'user' ? 'users' : 'resources'}...`} />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1F2937] border-white/10 text-slate-200 rounded-xl">
+                <SelectContent className="bg-white border-slate-200">
                   {availableStaff.map(s => (
-                    <SelectItem key={s.id} value={s.id} className="focus:bg-white/5 focus:text-white rounded-lg">
-                      {s.full_name}
-                    </SelectItem>
+                    <SelectItem key={s.id} value={s.id}>{s.full_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               
-              <div className="flex flex-wrap gap-2 mt-4">
+              <div className="flex flex-wrap gap-2 mt-3">
                 {assignedStaff.map(staff => (
-                  <div key={staff.id} className="flex items-center gap-2 bg-indigo-600/20 border border-indigo-500/30 text-indigo-100 px-3 py-1.5 rounded-full text-sm font-bold">
+                  <div key={staff.id} className="flex items-center gap-2 bg-[#E6F1FB] border border-blue-200 text-[#378ADD] px-3 py-1.5 rounded-lg text-[12px] font-semibold">
                     {staff.name}
-                    <button onClick={() => handleRemoveStaff(staff.id)} className="hover:text-white">
+                    <button onClick={() => setAssignedStaff(assignedStaff.filter(s => s.id !== staff.id))} className="hover:text-red-500">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -307,15 +411,15 @@ export default function AppointmentForm({ id }: { id?: string }) {
         {/* Section C: Working Hours */}
         <Section title="Working Hours & Schedule">
            <div className="space-y-6">
-              <div className="flex bg-white/5 p-1 rounded-2xl w-fit">
+              <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
                 <button 
-                  className={cn("px-6 py-2.5 rounded-xl text-sm font-bold transition-all", scheduleType === 'weekly' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white")}
+                  className={cn("px-5 py-2 rounded-lg text-[13px] font-semibold transition-all", scheduleType === 'weekly' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                   onClick={() => setScheduleType('weekly')}
                 >
                   Weekly
                 </button>
                 <button 
-                  className={cn("px-6 py-2.5 rounded-xl text-sm font-bold transition-all", scheduleType === 'flexible' ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white")}
+                  className={cn("px-5 py-2 rounded-lg text-[13px] font-semibold transition-all", scheduleType === 'flexible' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                   onClick={() => setScheduleType('flexible')}
                 >
                   Flexible
@@ -323,21 +427,21 @@ export default function AppointmentForm({ id }: { id?: string }) {
               </div>
 
               {scheduleType === 'weekly' ? (
-                <div className="border border-white/5 rounded-3xl overflow-hidden bg-white/[0.01]">
+                <div className="border border-slate-100 rounded-2xl overflow-hidden bg-white">
                    <table className="w-full text-left border-collapse">
-                      <thead className="bg-white/5 border-b border-white/5">
+                      <thead className="bg-slate-50 border-b border-slate-100">
                         <tr>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Day</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Open</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">From</th>
-                          <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">To</th>
+                          <th className="px-6 py-3 text-[12px] font-semibold text-slate-500 uppercase">Day</th>
+                          <th className="px-6 py-3 text-[12px] font-semibold text-slate-500 uppercase">Open</th>
+                          <th className="px-6 py-3 text-[12px] font-semibold text-slate-500 uppercase">From</th>
+                          <th className="px-6 py-3 text-[12px] font-semibold text-slate-500 uppercase">To</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5">
+                      <tbody className="divide-y divide-slate-100">
                         {workingHours.map((hour, idx) => (
-                          <tr key={hour.day} className="hover:bg-white/[0.02] transition-colors">
-                            <td className="px-6 py-4 font-bold text-white text-[15px]">{hour.day}</td>
-                            <td className="px-6 py-4">
+                          <tr key={hour.day} className="hover:bg-slate-50/50">
+                            <td className="px-6 py-3 font-medium text-slate-900 text-[13px]">{hour.day}</td>
+                            <td className="px-6 py-3">
                                <Switch 
                                  checked={hour.isOpen} 
                                  onCheckedChange={(checked) => {
@@ -345,10 +449,9 @@ export default function AppointmentForm({ id }: { id?: string }) {
                                    newHours[idx].isOpen = checked;
                                    setWorkingHours(newHours);
                                  }}
-                                 className="data-[state=checked]:bg-indigo-600"
                                />
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-3">
                                <input 
                                  type="time" 
                                  value={hour.from} 
@@ -358,10 +461,10 @@ export default function AppointmentForm({ id }: { id?: string }) {
                                    newHours[idx].from = e.target.value;
                                    setWorkingHours(newHours);
                                  }}
-                                 className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-sm text-white disabled:opacity-30 outline-none focus:border-indigo-500/50"
+                                 className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] text-slate-900 disabled:opacity-50 outline-none focus:border-[#378ADD]"
                                />
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-3">
                                <input 
                                  type="time" 
                                  value={hour.to} 
@@ -371,7 +474,7 @@ export default function AppointmentForm({ id }: { id?: string }) {
                                    newHours[idx].to = e.target.value;
                                    setWorkingHours(newHours);
                                  }}
-                                 className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-sm text-white disabled:opacity-30 outline-none focus:border-indigo-500/50"
+                                 className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[13px] text-slate-900 disabled:opacity-50 outline-none focus:border-[#378ADD]"
                                />
                             </td>
                           </tr>
@@ -380,267 +483,194 @@ export default function AppointmentForm({ id }: { id?: string }) {
                    </table>
                 </div>
               ) : (
-                <div className="space-y-4">
-                   <div className="p-12 border border-dashed border-white/10 rounded-[32px] text-center bg-white/[0.01]">
-                      <Calendar className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-                      <p className="text-slate-400 font-medium mb-6">Add specific date blocks for this appointment</p>
-                      <Button variant="outline" className="border-white/10 hover:bg-white/5 text-white rounded-xl gap-2 font-bold">
-                        <Plus className="w-4 h-4" /> Add Time Block
-                      </Button>
-                   </div>
+                <div className="p-10 border border-dashed border-slate-200 rounded-2xl text-center bg-slate-50">
+                   <Calendar className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                   <p className="text-slate-500 font-medium text-[13px] mb-4">Add specific date blocks for this appointment</p>
+                   <Button variant="outline" className="border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl gap-2 font-semibold">
+                     <Plus className="w-4 h-4" /> Add Time Block
+                   </Button>
                 </div>
               )}
            </div>
         </Section>
 
-        {/* Section D: Slot Configuration */}
-        <Section title="Slot Configuration">
-           <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-4">
-                 <Label className="text-slate-300 font-bold ml-1">Slot Duration</Label>
-                 <div className="relative">
-                    <Input 
-                      type="number"
-                      value={duration}
-                      onChange={(e) => setDuration(e.target.value)}
-                      className="bg-white/5 border-white/10 rounded-2xl h-12 text-white pl-12"
-                    />
-                    <Clock className="w-5 h-5 text-slate-500 absolute left-4 top-1/2 -translate-y-1/2" />
-                 </div>
-              </div>
-              <div className="space-y-4">
-                 <Label className="text-slate-300 font-bold ml-1">Slot Creation</Label>
-                 <RadioGroup value={slotCreation} onValueChange={(val: any) => setSlotCreation(val)} className="flex gap-4">
-                    <div 
-                      className={cn(
-                        "flex-1 flex items-center gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer",
-                        slotCreation === 'auto' ? "bg-indigo-600/10 border-indigo-500/50 text-white" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
-                      )}
-                      onClick={() => setSlotCreation('auto')}
-                    >
-                      <span className="font-bold text-sm">Auto</span>
-                    </div>
-                    <div 
-                      className={cn(
-                        "flex-1 flex items-center gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer",
-                        slotCreation === 'manual' ? "bg-indigo-600/10 border-indigo-500/50 text-white" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
-                      )}
-                      onClick={() => setSlotCreation('manual')}
-                    >
-                      <span className="font-bold text-sm">Manual</span>
-                    </div>
-                 </RadioGroup>
-              </div>
-           </div>
-        </Section>
-
-        {/* Section E: Booking Rules */}
+        {/* Section D: Booking Rules */}
         <Section title="Booking Rules">
-           <div className="space-y-8">
-              <div className="grid md:grid-cols-2 gap-8 items-end">
-                <div className="space-y-4">
-                   <Label className="text-slate-300 font-bold ml-1">Max Bookings per Slot</Label>
+           <div className="space-y-6">
+              <div className="grid md:grid-cols-2 gap-6 items-end">
+                <div className="space-y-2">
+                   <Label className="text-[13px] font-semibold text-slate-700">Max Bookings per Slot</Label>
                    <Input 
                      type="number"
                      value={maxBookings}
                      onChange={(e) => setMaxBookings(e.target.value)}
-                     className="bg-white/5 border-white/10 rounded-2xl h-12 text-white"
+                     className="bg-slate-50 border-slate-200 rounded-xl h-11 text-[13px] text-slate-900"
                    />
                 </div>
-                <div className="flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl h-12">
-                   <span className="text-sm font-bold text-slate-300">Manage Capacity</span>
+                <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-xl h-11">
+                   <span className="text-[13px] font-semibold text-slate-700">Manage Capacity</span>
                    <Switch 
                      checked={manageCapacity}
                      onCheckedChange={setManageCapacity}
-                     className="data-[state=checked]:bg-indigo-600"
                    />
                 </div>
               </div>
 
-              {manageCapacity && (
-                 <div className="p-6 bg-indigo-600/5 border border-indigo-500/20 rounded-3xl animate-in zoom-in-95 duration-300">
-                    <Label className="text-indigo-300 font-bold block mb-4">Max people per booking</Label>
-                    <Input 
-                      type="number"
-                      value={maxPeople}
-                      onChange={(e) => setMaxPeople(e.target.value)}
-                      className="bg-white/5 border-indigo-500/20 rounded-2xl h-12 text-white"
+              <div className="grid md:grid-cols-2 gap-6 items-end">
+                 <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div className="space-y-0.5">
+                       <p className="font-semibold text-slate-900 text-[13px]">Advance Payment</p>
+                       <p className="text-[12px] text-slate-500">Require payment before booking</p>
+                    </div>
+                    <Switch 
+                      checked={advancePayment}
+                      onCheckedChange={setAdvancePayment}
                     />
                  </div>
-              )}
+                 {advancePayment && (
+                    <div className="flex gap-2">
+                       <div className="flex-1 space-y-2">
+                          <Label className="text-[13px] font-semibold text-slate-700">Amount</Label>
+                          <Input 
+                            type="number"
+                            value={price}
+                            onChange={(e) => setPrice(e.target.value)}
+                            className="bg-slate-50 border-slate-200 rounded-xl h-11 text-[13px]"
+                          />
+                       </div>
+                       <div className="w-24 space-y-2">
+                          <Label className="text-[13px] font-semibold text-slate-700">Currency</Label>
+                          <Select value={currency} onValueChange={setCurrency}>
+                            <SelectTrigger className="bg-slate-50 border-slate-200 rounded-xl h-11 text-[13px]">
+                               <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                               <SelectItem value="USD">USD</SelectItem>
+                               <SelectItem value="EUR">EUR</SelectItem>
+                            </SelectContent>
+                          </Select>
+                       </div>
+                    </div>
+                 )}
+              </div>
 
-              <div className="flex items-center justify-between p-6 bg-white/[0.02] border border-white/5 rounded-3xl">
-                 <div className="space-y-1">
-                    <p className="font-bold text-white">Manual Confirmation</p>
-                    <p className="text-xs text-slate-500 font-medium">Bookings go to "Reserved" until you confirm them</p>
+              <div className="flex items-center justify-between p-5 bg-slate-50 border border-slate-200 rounded-xl">
+                 <div className="space-y-0.5">
+                    <p className="font-semibold text-slate-900 text-[13px]">Manual Confirmation</p>
+                    <p className="text-[12px] text-slate-500">Bookings go to "Reserved" until you confirm them</p>
                  </div>
                  <Switch 
                    checked={manualConfirmation}
                    onCheckedChange={setManualConfirmation}
-                   className="data-[state=checked]:bg-indigo-600"
                  />
-              </div>
-
-              <div className="space-y-4">
-                 <Label className="text-slate-300 font-bold ml-1">Assignment of {type === 'user' ? 'Staff' : 'Resource'}</Label>
-                 <RadioGroup value={assignmentType} onValueChange={(val: any) => setAssignmentType(val)} className="flex gap-4">
-                    <div 
-                      className={cn(
-                        "flex-1 flex flex-col gap-1 p-4 rounded-3xl border transition-all cursor-pointer",
-                        assignmentType === 'auto' ? "bg-indigo-600/10 border-indigo-500/50 text-white shadow-lg shadow-indigo-500/5" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
-                      )}
-                      onClick={() => setAssignmentType('auto')}
-                    >
-                      <span className="font-bold text-[15px]">Auto Assign</span>
-                      <span className="text-[10px] uppercase tracking-wider font-bold opacity-60">System decides</span>
-                    </div>
-                    <div 
-                      className={cn(
-                        "flex-1 flex flex-col gap-1 p-4 rounded-3xl border transition-all cursor-pointer",
-                        assignmentType === 'manual' ? "bg-indigo-600/10 border-indigo-500/50 text-white shadow-lg shadow-indigo-500/5" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10"
-                      )}
-                      onClick={() => setAssignmentType('manual')}
-                    >
-                      <span className="font-bold text-[15px]">Customer Selects</span>
-                      <span className="text-[10px] uppercase tracking-wider font-bold opacity-60">Manual choice</span>
-                    </div>
-                 </RadioGroup>
               </div>
            </div>
         </Section>
 
-        {/* Section F: Custom Questions */}
+        {/* Section E: Custom Questions */}
         <Section title="Custom Questions">
-           <div className="space-y-6">
-              <p className="text-slate-400 text-sm font-medium ml-1">Ask your customers for more details during booking</p>
+           <div className="space-y-5">
+              <p className="text-slate-500 text-[13px] font-medium">Ask your customers for more details during booking</p>
               
-              <div className="space-y-4">
-                {questions.map((q, idx) => (
-                  <div key={q.id} className="flex gap-4 p-6 bg-white/[0.02] border border-white/5 rounded-3xl group animate-in slide-in-from-left-4 duration-300">
-                    <div className="pt-3 cursor-grab active:cursor-grabbing text-slate-600 hover:text-slate-400 transition-colors">
-                       <GripVertical className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 grid md:grid-cols-12 gap-4 items-end">
-                       <div className="md:col-span-5 space-y-2">
-                          <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Question Text</Label>
-                          <Input 
-                            value={q.text}
-                            onChange={(e) => {
-                              const newQ = [...questions];
-                              newQ[idx].text = e.target.value;
-                              setQuestions(newQ);
-                            }}
-                            className="bg-white/5 border-white/10 rounded-2xl h-11 text-white"
-                          />
-                       </div>
-                       <div className="md:col-span-4 space-y-2">
-                          <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Type</Label>
-                          <Select 
-                            value={q.type}
-                            onValueChange={(val: any) => {
-                              const newQ = [...questions];
-                              newQ[idx].type = val;
-                              setQuestions(newQ);
-                            }}
-                          >
-                             <SelectTrigger className="bg-white/5 border-white/10 rounded-2xl h-11 text-white">
-                                <SelectValue />
-                             </SelectTrigger>
-                             <SelectContent className="bg-[#1F2937] border-white/10 text-slate-200">
-                                <SelectItem value="short_text">Short Text</SelectItem>
-                                <SelectItem value="long_text">Long Text</SelectItem>
-                                <SelectItem value="multi_choice">Multiple Choice</SelectItem>
-                                <SelectItem value="checkbox">Checkbox</SelectItem>
-                             </SelectContent>
-                          </Select>
-                       </div>
-                       <div className="md:col-span-2 flex flex-col items-center gap-2 mb-2">
-                          <Label className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Required</Label>
-                          <Switch 
-                            checked={q.required}
-                            onCheckedChange={(checked) => {
-                              const newQ = [...questions];
-                              newQ[idx].required = checked;
-                              setQuestions(newQ);
-                            }}
-                            className="data-[state=checked]:bg-indigo-600"
-                          />
-                       </div>
-                       <div className="md:col-span-1 pb-1">
-                          <button 
-                            onClick={() => handleRemoveQuestion(q.id)}
-                            className="p-2.5 text-slate-600 hover:text-red-400 hover:bg-red-400/10 rounded-xl transition-all"
-                          >
-                             <Trash2 className="w-5 h-5" />
-                          </button>
-                       </div>
-                    </div>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={questions.map(q => q.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-3">
+                    {questions.map((q, idx) => (
+                      <SortableQuestion 
+                        key={q.id} 
+                        q={q} 
+                        idx={idx} 
+                        onUpdate={updateQuestion} 
+                        onRemove={removeQuestion} 
+                      />
+                    ))}
                   </div>
-                ))}
-              </div>
+                </SortableContext>
+              </DndContext>
 
               <Button 
                 variant="outline" 
-                onClick={handleAddQuestion}
-                className="w-full border-dashed border-white/10 hover:border-indigo-500/30 hover:bg-indigo-500/5 text-slate-400 hover:text-indigo-400 rounded-3xl h-16 gap-3 font-bold transition-all"
+                onClick={() => setQuestions([...questions, { id: Math.random().toString(36).substr(2, 9), text: "", type: "short_text", required: false }])}
+                className="w-full border-dashed border-slate-200 hover:border-[#378ADD] hover:bg-blue-50/50 text-[#378ADD] rounded-xl h-12 gap-2 font-semibold transition-all"
               >
-                <Plus className="w-5 h-5" /> Add New Question
+                <Plus className="w-4 h-4" /> Add New Question
               </Button>
            </div>
         </Section>
 
-        {/* Section G: Confirmation Message */}
+        {/* Section F: Confirmation Message */}
         <Section title="Confirmation Message">
-           <div className="space-y-4">
-              <p className="text-slate-400 text-sm font-medium ml-1">Shown to customers after a successful booking</p>
+           <div className="space-y-3">
+              <p className="text-slate-500 text-[13px] font-medium">Shown to customers after a successful booking</p>
               <textarea 
                 value={confirmationMessage}
                 onChange={(e) => setConfirmationMessage(e.target.value)}
                 rows={4}
-                className="w-full bg-white/5 border border-white/10 rounded-[32px] p-6 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all placeholder:text-slate-600"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-[13px] text-slate-900 focus:ring-2 focus:ring-[#378ADD]/20 focus:border-[#378ADD] outline-none transition-all placeholder:text-slate-400"
               />
            </div>
         </Section>
       </div>
 
-      {/* Sticky Footer */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-72 bg-[#0B0F1A]/80 backdrop-blur-2xl border-t border-white/5 p-6 z-40">
+      {/* Sticky Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 lg:left-64 bg-white/80 backdrop-blur-xl border-t border-slate-200 p-4 z-40">
          <div className="max-w-4xl mx-auto flex items-center justify-between">
             <Button 
               variant="outline" 
-              onClick={() => router.back()}
-              className="border-white/10 hover:bg-white/5 text-white rounded-xl px-8 h-12 font-bold"
+              onClick={handleBack}
+              className="border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg px-6 h-10 text-[13px] font-semibold"
             >
               Cancel
             </Button>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
                <Button 
                  variant="outline" 
                  onClick={() => setIsPreviewOpen(true)}
-                 className="hidden sm:flex border-white/10 hover:bg-white/5 text-white rounded-xl px-8 h-12 font-bold gap-2"
+                 className="hidden sm:flex border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg px-5 h-10 text-[13px] font-semibold gap-2"
                >
-                 <Eye className="w-4 h-4" /> Preview
+                 <Eye className="w-3.5 h-3.5" /> Preview
                </Button>
                <Button 
                  variant="secondary"
                  disabled={isSaving}
                  onClick={() => handleSave(false)}
-                 className="bg-white/5 hover:bg-white/10 text-white border-white/10 rounded-xl px-8 h-12 font-bold gap-2"
+                 className="bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-lg px-6 h-10 text-[13px] font-semibold gap-2"
                >
-                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                 {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                  Save Draft
                </Button>
                <Button 
                  disabled={isSaving}
                  onClick={() => handleSave(true)}
-                 className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-10 h-12 font-bold gap-2 shadow-xl shadow-indigo-600/20"
+                 className="bg-[#378ADD] hover:bg-[#2866A0] text-white rounded-lg px-8 h-10 text-[13px] font-semibold gap-2"
                >
-                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                 {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                  Publish
                </Button>
             </div>
          </div>
       </div>
+
+      {/* Exit Dialog */}
+      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Are you sure you want to leave this page?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-lg h-9 text-[13px]">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => router.back()}
+              className="bg-red-600 hover:bg-red-700 text-white rounded-lg h-9 text-[13px]"
+            >
+              Discard changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Preview Sidebar */}
       {isPreviewOpen && (

@@ -116,6 +116,16 @@ if (!globalForDb.db) {
       FOREIGN KEY(booking_id) REFERENCES bookings(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS appointment_questions (
+      id TEXT PRIMARY KEY,
+      appointment_id TEXT NOT NULL,
+      text TEXT NOT NULL,
+      type TEXT NOT NULL,
+      required INTEGER NOT NULL DEFAULT 0,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      FOREIGN KEY(appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS admin_audit (
       id TEXT PRIMARY KEY,
       admin_id TEXT NOT NULL,
@@ -132,6 +142,8 @@ if (!globalForDb.db) {
   ensureColumn('users', 'otp_expires_at', 'INTEGER');
   ensureColumn('users', 'otp_purpose', 'TEXT');
   ensureColumn('users', 'updated_at', "INTEGER NOT NULL DEFAULT (strftime(''s'',''now''))");
+  ensureColumn('appointments', 'appointment_type', "TEXT DEFAULT 'user'");
+  ensureColumn('appointments', 'share_token', 'TEXT');
 
   const now = Math.floor(Date.now() / 1000);
   const adminPass = bcrypt.hashSync('Admin@12345', 12);

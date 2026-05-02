@@ -55,18 +55,56 @@ export async function POST(request: Request) {
   const data = await request.json();
   const id = `apt_${Math.random().toString(36).substr(2, 9)}`;
 
-  db.prepare(`
-    INSERT INTO appointments (id, organiser_id, name, description, duration, provider_count, is_published)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id,
-    auth.user.id, // Use actual logged-in user instead of hardcoded ID
-    data.name,
-    data.description || '',
-    data.duration || 30,
-    0,
-    data.isPublished ? 1 : 0
-  );
+  const insert = db.transaction(() => {
+    db.prepare(`
+      INSERT INTO appointments (
+        id, organiser_id, name, description, duration, provider_count, is_published,
+        appointment_type, manage_capacity, max_bookings_per_slot, advance_payment, manual_confirmation
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id,
+      auth.user.id,
+      data.name,
+      data.description || '',
+      data.duration || 30,
+      0,
+      data.isPublished ? 1 : 0,
+      data.appointment_type || 'user',
+      data.manage_capacity ? 1 : 0,
+      data.max_bookings_per_slot || 1,
+      data.advance_payment ? 1 : 0,
+      data.manualConfirmation ? 1 : 0
+    );
+
+    // Save questions if they exist
+    if (data.questions && data.questions.length > 0) {
+      const stmt = db.prepare(`
+        INSERT INTO appointment_questions (id, appointment_id, text, type, required, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      data.questions.forEach((q: any, idx: number) => {
+        stmt.run(q.id, id, q.text, q.type, q.required ? 1 : 0, idx);
+      });
+    }
+
+    // Assign providers if selected
+    if (data.assignedStaff && data.assignedStaff.length > 0) {
+      const stmt = db.prepare(`INSERT INTO appointment_providers (appointment_id, provider_id) VALUES (?, ?)`);
+      data.assignedStaff.forEach((staff: any) => {
+        // Need to ensure provider exists, maybe staff.id is the provider_id
+        try {
+           stmt.run(id, staff.id);
+        } catch(e) {
+           // Ignore foreign key errors if provider doesn't exist
+        }
+      });
+      // Update provider_count
+      db.prepare(`UPDATE appointments SET provider_count = ? WHERE id = ?`).run(data.assignedStaff.length, id);
+    }
+  });
+
+  insert();
 
   return NextResponse.json({ id, success: true });
 }

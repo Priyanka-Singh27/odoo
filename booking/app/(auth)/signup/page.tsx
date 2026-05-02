@@ -6,13 +6,19 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Calendar, CheckCircle2, AlertCircle } from "lucide-react";
 import { signupSchema } from "@/lib/validators/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 type SignupFormValues = z.infer<typeof signupSchema>;
+
+const FEATURES = [
+  { text: "Real-time slot availability" },
+  { text: "Instant booking confirmation" },
+  { text: "Manage teams and resources" },
+];
 
 export default function SignupPage() {
   const router = useRouter();
@@ -27,25 +33,37 @@ export default function SignupPage() {
     formState: { errors },
   } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: {
-      fullName: "",
-      email: "",
-      password: "",
-    },
+    defaultValues: { fullName: "", email: "", password: "" },
   });
 
   const passwordValue = watch("password") || "";
 
-  // Calculate password strength (0-3)
   const getPasswordStrength = (pw: string) => {
     let score = 0;
     if (pw.length >= 8) score += 1;
     if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score += 1;
     if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw)) score += 1;
-    return score;
+    return score; 
   };
 
-  const strength = getPasswordStrength(passwordValue);
+  const strengthScore = passwordValue.length > 0 ? Math.max(1, getPasswordStrength(passwordValue) + 1) : 0;
+  
+  const getStrengthLabel = (score: number) => {
+    if (score === 1) return "Weak";
+    if (score === 2) return "Fair";
+    if (score === 3) return "Good";
+    if (score === 4) return "Strong";
+    return "";
+  };
+
+  const getStrengthColor = (score: number, index: number) => {
+    if (score < index + 1) return "bg-slate-200";
+    if (score === 1) return "bg-red-500";
+    if (score === 2) return "bg-amber-400";
+    if (score === 3) return "bg-[#378ADD]";
+    if (score === 4) return "bg-green-500";
+    return "bg-slate-200";
+  };
 
   const onSubmit = async (data: SignupFormValues) => {
     setIsLoading(true);
@@ -56,19 +74,13 @@ export default function SignupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      
       const resData = await res.json();
-      
       if (!res.ok) {
-        if (resData.error === 'Email already in use') {
-          setError(resData.error);
-        } else {
-          setError(resData.error || "An error occurred during signup");
-        }
+        setError(resData.error || "An error occurred during signup");
       } else {
         router.push("/verify-otp?purpose=verify");
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
@@ -76,94 +88,153 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="w-full">
-      <div className="mb-8 lg:hidden flex justify-center">
-        <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md">
-          A
+    <div className="min-h-screen flex w-full">
+      {/* Left panel - Brand Side */}
+      <div className="hidden lg:flex lg:w-1/2 bg-[#EBF4FF] flex-col p-12 justify-between">
+        {/* Top left logo */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-[#378ADD] rounded-xl flex items-center justify-center">
+            <Calendar className="w-5 h-5 text-white" />
+          </div>
+          <span className="text-[#378ADD] font-bold text-xl tracking-tight">Appointment App</span>
+        </div>
+
+        {/* Center content */}
+        <div>
+          <h1 className="text-4xl font-bold text-slate-800 leading-tight mb-8 max-w-md">
+            The smartest way to book, manage, and organise appointments.
+          </h1>
+          <div className="space-y-4">
+            {FEATURES.map((feature, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-[#378ADD] fill-[#378ADD] text-white" />
+                <span className="text-slate-700 font-medium">{feature.text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom tagline */}
+        <p className="text-slate-500 font-medium">Trusted by organisers, loved by customers.</p>
+      </div>
+
+      {/* Mobile top banner */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-[#EBF4FF] p-4 flex items-center justify-center gap-3 z-10 border-b border-blue-100">
+        <div className="w-8 h-8 bg-[#378ADD] rounded-lg flex items-center justify-center">
+          <Calendar className="w-4 h-4 text-white" />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[#378ADD] font-bold tracking-tight leading-none">Appointment App</span>
+          <span className="text-blue-600/70 text-[10px] font-medium uppercase tracking-wider mt-0.5">Smart Booking</span>
         </div>
       </div>
-      
-      <h2 className="text-2xl font-bold text-slate-900 mb-6 lg:text-left text-center">Create your account</h2>
-      
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="fullName">Full Name</Label>
-          <Input 
-            id="fullName" 
-            placeholder="John Doe" 
-            {...register("fullName")} 
-            className="h-11 rounded-xl"
-          />
-          {errors.fullName && <p className="text-sm text-red-500">{errors.fullName.message}</p>}
-        </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input 
-            id="email" 
-            type="email" 
-            placeholder="name@example.com" 
-            {...register("email")} 
-            className="h-11 rounded-xl"
-          />
-          {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
-          {error && error === 'Email already in use' && (
-            <p className="text-sm text-red-500">{error}</p>
-          )}
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <div className="relative">
-            <Input 
-              id="password" 
-              type={showPassword ? "text" : "password"} 
-              {...register("password")} 
-              className="h-11 rounded-xl pr-10"
-            />
-            <button 
-              type="button" 
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+      {/* Right panel - Form Side */}
+      <div className="w-full lg:w-1/2 bg-white flex items-center justify-center p-6 pt-24 lg:pt-6">
+        <div className="w-full max-w-[380px]">
+          {/* Header */}
+          <div className="mb-8">
+            <h2 className="text-[22px] font-semibold text-slate-800 mb-1">Create your account</h2>
+            <p className="text-slate-400 text-sm">Fill in the details below to get started.</p>
           </div>
-          
-          {/* Password Strength Indicator */}
-          {passwordValue.length > 0 && (
-            <div className="flex gap-1.5 mt-2">
-              <div className={`h-1.5 w-1/3 rounded-full transition-colors ${strength >= 1 ? 'bg-red-500' : 'bg-slate-200'}`} />
-              <div className={`h-1.5 w-1/3 rounded-full transition-colors ${strength >= 2 ? 'bg-amber-400' : 'bg-slate-200'}`} />
-              <div className={`h-1.5 w-1/3 rounded-full transition-colors ${strength >= 3 ? 'bg-green-500' : 'bg-slate-200'}`} />
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="fullName" className="text-xs font-medium text-slate-600">Full name</Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="Jane Doe"
+                {...register("fullName")}
+                className="h-10 px-3 border-slate-200 rounded-xl focus:border-[#378ADD] focus:ring-[#378ADD]/10 placeholder:text-slate-300 text-sm"
+              />
+              {errors.fullName && <p className="text-xs text-red-500">{errors.fullName.message}</p>}
             </div>
-          )}
-          
-          {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-medium text-slate-600">Email address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                {...register("email")}
+                className="h-10 px-3 border-slate-200 rounded-xl focus:border-[#378ADD] focus:ring-[#378ADD]/10 placeholder:text-slate-300 text-sm"
+              />
+              {errors.email && <p className="text-xs text-red-500">{errors.email.message}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-xs font-medium text-slate-600">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  {...register("password")}
+                  className="h-10 px-3 pr-10 border-slate-200 rounded-xl focus:border-[#378ADD] focus:ring-[#378ADD]/10 placeholder:text-slate-300 text-sm"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              
+              {/* Password strength bar */}
+              {passwordValue.length > 0 && (
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex flex-1 gap-1 h-1.5">
+                    {[0, 1, 2, 3].map((index) => (
+                      <div 
+                        key={index} 
+                        className={`flex-1 rounded-full transition-colors duration-300 ${getStrengthColor(strengthScore, index)}`}
+                      />
+                    ))}
+                  </div>
+                  <span className={`text-[10px] font-medium w-10 text-right ${
+                    strengthScore === 1 ? "text-red-500" :
+                    strengthScore === 2 ? "text-amber-500" :
+                    strengthScore === 3 ? "text-[#378ADD]" :
+                    "text-green-500"
+                  }`}>
+                    {getStrengthLabel(strengthScore)}
+                  </span>
+                </div>
+              )}
+              {errors.password && <p className="text-xs text-red-500">{errors.password.message}</p>}
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 bg-[#FCEBEB] border border-[#F7C1C1] rounded-xl text-[#A32D2D] text-sm mt-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <p>{error}</p>
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-10 bg-[#378ADD] hover:bg-[#185FA5] text-white rounded-xl font-medium mt-4"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating account...
+                </>
+              ) : "Sign Up"}
+            </Button>
+          </form>
+
+          <p className="mt-8 text-center text-xs text-slate-400">
+            Already have an account?{" "}
+            <Link href="/login" className="text-[#378ADD] hover:text-[#185FA5] font-medium">
+              Log in →
+            </Link>
+          </p>
         </div>
-
-        {error && error !== 'Email already in use' && (
-          <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">
-            {error}
-          </div>
-        )}
-
-        <Button 
-          type="submit" 
-          disabled={isLoading} 
-          className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl mt-4"
-        >
-          {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-          Sign Up
-        </Button>
-      </form>
-      
-      <p className="mt-6 text-center text-sm text-slate-600">
-        Already have an account?{" "}
-        <Link href="/login" className="text-blue-600 hover:text-blue-500 font-medium">
-          Log in &rarr;
-        </Link>
-      </p>
+      </div>
     </div>
   );
 }

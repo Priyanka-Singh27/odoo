@@ -51,12 +51,12 @@ export default function OrganiserDashboard() {
             <p className="text-slate-500">You have <span className="font-semibold text-slate-900">12 new bookings</span> today. Your sessions are filling up fast.</p>
          </div>
          <div className="flex items-center gap-3">
-            <Link href="/organiser/calendar">
+            <Link href="/organizer/calendar">
                <Button variant="outline" className="bg-white border-slate-200 text-slate-700 hover:bg-slate-50">
                  View Schedule
                </Button>
             </Link>
-            <Link href="/organiser/appointments/new">
+            <Link href="/organizer/appointments/new">
                <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
                  <Plus className="w-4 h-4 mr-2" /> New Appointment
                </Button>
@@ -125,10 +125,10 @@ export default function OrganiserDashboard() {
 
         {/* Quick Actions / Recent */}
         <div className="lg:col-span-1 space-y-6">
-           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                  <h3 className="text-lg font-semibold text-slate-900">Upcoming Today</h3>
-                 <Link href="/organiser/calendar" className="text-sm text-blue-600 hover:text-blue-700 font-medium">View all</Link>
+                 <Link href="/organizer/calendar" className="text-sm text-blue-600 hover:text-blue-700 font-medium">View all</Link>
               </div>
               <div className="space-y-3">
                  {[

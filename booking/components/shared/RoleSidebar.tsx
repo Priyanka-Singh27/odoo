@@ -75,8 +75,10 @@ export default function RoleSidebar({
                     href={item.href}
                     onClick={() => mobileOpen && onToggleMobile()}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                      active ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                      "flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors border-l-2",
+                      active 
+                        ? "border-[#378ADD] text-[#378ADD] bg-[#E6F1FB]" 
+                        : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
                     )}
                     title={collapsed ? item.label : undefined}
                   >

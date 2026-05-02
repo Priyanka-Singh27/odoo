@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Search, MapPin, Moon, Bell, ChevronDown, User, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
 import { 
@@ -13,10 +14,36 @@ import { useRouter } from "next/navigation";
 
 export default function AppHeader() {
   const router = useRouter();
+  const [userData, setUserData] = useState<{ full_name: string; email: string; avatar_url: string | null } | null>(null);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error) {
+          setUserData(data);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
+  };
+
+  const getInitials = (name: string) => {
+    const parts = name.split(' ').filter(Boolean);
+    if (parts.length === 0) return 'U';
+    if (parts.length === 1) return parts[0][0].toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+  
+  const getTruncatedName = (name: string) => {
+    const parts = name.split(' ').filter(Boolean);
+    if (parts.length <= 1) return name;
+    return `${parts[0]} ${parts[parts.length - 1][0]}.`;
   };
 
   return (
@@ -69,21 +96,51 @@ export default function AppHeader() {
         <DropdownMenu>
            <DropdownMenuTrigger className="flex items-center gap-2 cursor-pointer p-1.5 hover:bg-slate-50 rounded-md transition-colors ml-1">
               <div>
-                 <div className="w-8 h-8 rounded bg-slate-100 overflow-hidden border border-slate-200">
-                    <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="Avatar" className="w-full h-full object-cover" />
-                 </div>
+                 {userData?.avatar_url && !imgError ? (
+                   <div className="w-8 h-8 rounded-full bg-slate-100 overflow-hidden border border-slate-200">
+                      <img 
+                        src={userData.avatar_url} 
+                        alt="Avatar" 
+                        className="w-full h-full object-cover"
+                        onError={() => setImgError(true)}
+                      />
+                   </div>
+                 ) : (
+                   <div className="w-8 h-8 rounded-full bg-[#378ADD] flex items-center justify-center text-white font-medium text-sm">
+                      {userData ? getInitials(userData.full_name) : 'U'}
+                   </div>
+                 )}
               </div>
               <div className="hidden sm:block">
-                 <p className="text-sm font-medium text-slate-700">Cameron W.</p>
+                 <p className="text-sm font-medium text-slate-700">
+                   {userData ? getTruncatedName(userData.full_name) : 'Loading...'}
+                 </p>
               </div>
               <ChevronDown className="w-4 h-4 text-slate-400" />
            </DropdownMenuTrigger>
            <DropdownMenuContent align="end" className="w-56 p-1 rounded-md border-slate-200">
               <div className="px-2 py-3 flex items-center gap-3">
-                 <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white font-medium text-sm">C</div>
-                 <div>
-                    <p className="text-sm font-medium text-slate-900 leading-tight">Cameron Wilson</p>
-                    <p className="text-xs text-slate-500">cameron@example.com</p>
+                 {userData?.avatar_url && !imgError ? (
+                   <div className="w-8 h-8 rounded-full bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                     <img 
+                        src={userData.avatar_url} 
+                        alt="Avatar" 
+                        className="w-full h-full object-cover"
+                        onError={() => setImgError(true)}
+                      />
+                   </div>
+                 ) : (
+                   <div className="w-8 h-8 rounded-full bg-[#378ADD] flex items-center justify-center shrink-0 text-white font-medium text-sm">
+                     {userData ? getInitials(userData.full_name) : 'U'}
+                   </div>
+                 )}
+                 <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-slate-900 leading-tight truncate">
+                      {userData ? userData.full_name : 'Loading...'}
+                    </p>
+                    <p className="text-xs text-slate-500 truncate">
+                      {userData ? userData.email : ''}
+                    </p>
                  </div>
               </div>
               <DropdownMenuSeparator className="bg-slate-100" />
