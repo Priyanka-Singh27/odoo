@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { authorize } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 
 // GET /api/admin/audit — admin-only: view audit log
 export async function GET() {
-  const auth = await authorize("admin");
-  if (!auth.ok) return auth.response;
+  try {
+    await requireAdmin();
+  } catch (response) {
+    return response as NextResponse;
+  }
 
   const rows = db
     .prepare(

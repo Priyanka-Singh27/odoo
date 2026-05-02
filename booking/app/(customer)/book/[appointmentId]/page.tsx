@@ -1,137 +1,191 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { format } from "date-fns";
 import MultiStepProgress from "@/components/shared/MultiStepProgress";
-import BookingSummaryCard from "@/components/booking/BookingSummaryCard";
-import DoctorCard from "@/components/booking/DoctorCard";
-import DoctorDetail from "@/components/booking/DoctorDetail";
-import BookingRightPanel from "@/components/booking/BookingRightPanel";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
 import CapacityStepper from "@/components/booking/CapacityStepper";
-import QuestionsForm from "@/components/booking/QuestionsForm";
-import PaymentForm from "@/components/booking/PaymentForm";
+
+type Provider = { id: string; name: string; specialty: string | null };
+type Appointment = {
+  id: string;
+  name: string;
+  duration: number;
+  manage_capacity: number;
+  max_bookings_per_slot: number;
+  advance_payment: number;
+  providers: Provider[];
+};
+type Slot = {
+  id: string;
+  startTime: string;
+  endTime: string;
+  remainingCapacity: number;
+  isAvailable: boolean;
+};
 
 export default function BookingWizard() {
   const router = useRouter();
+  const params = useParams<{ appointmentId: string }>();
+  const appointmentId = params.appointmentId;
+
+  const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1);
+  const [providerId, setProviderId] = useState("");
+  const [date, setDate] = useState<Date | undefined>();
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [slotId, setSlotId] = useState("");
   const [capacity, setCapacity] = useState(1);
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const steps = ["Select Provider", "Choose Date & Time", "Capacity", "Questions", "Payment"];
-  
-  // Mock feature flags
-  const manageCapacity = true;
-  const advancePayment = true;
+  const manageCapacity = appointment?.manage_capacity === 1;
+  const stepLabels = useMemo(() => {
+    const labels = ["Provider", "Date & Slot"];
+    if (manageCapacity) labels.push("Capacity");
+    labels.push("Questions");
+    return labels;
+  }, [manageCapacity]);
 
-  const nextStep = () => {
-    if (step === 5 || (!advancePayment && step === 4)) {
-      router.push("/confirmation");
-      return;
-    }
-    
-    if (!manageCapacity && step === 2) {
-      setStep(4);
-      return;
-    }
+  useEffect(() => {
+    const run = async () => {
+      setLoading(true);
+      const res = await fetch(`/api/appointments/${appointmentId}`);
+      if (!res.ok) {
+        setLoading(false);
+        return;
+      }
+      const data = (await res.json()) as Appointment;
+      setAppointment(data);
+      setProviderId(data.providers?.[0]?.id ?? "");
+      setLoading(false);
+    };
+    void run();
+  }, [appointmentId]);
 
-    setStep((s) => Math.min(5, s + 1));
+  useEffect(() => {
+    const run = async () => {
+      if (!providerId || !date) return;
+      const day = format(date, "yyyy-MM-dd");
+      const res = await fetch(`/api/slots?appointmentId=${appointmentId}&providerId=${providerId}&date=${day}`);
+      if (!res.ok) return;
+      const data = (await res.json()) as { data: Slot[] };
+      setSlots(data.data || []);
+      setSlotId("");
+    };
+    void run();
+  }, [appointmentId, providerId, date]);
+
+  const selectedSlot = slots.find((s) => s.id === slotId);
+  const capacityMax = Math.max(1, Math.min(appointment?.max_bookings_per_slot ?? 1, selectedSlot?.remainingCapacity ?? 1));
+  const questionsStep = manageCapacity ? 4 : 3;
+
+  const submitBooking = async () => {
+    if (!providerId || !slotId) return;
+    setSubmitting(true);
+    const res = await fetch("/api/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        appointmentId,
+        providerId,
+        slotId,
+        peopleCount: manageCapacity ? capacity : 1,
+        answers: { notes },
+      }),
+    });
+    setSubmitting(false);
+    if (!res.ok) return;
+    const data = (await res.json()) as { data?: { id: string } };
+    router.push(`/confirmation?bookingId=${data.data?.id ?? ""}`);
   };
 
+  if (loading || !appointment) {
+    return <div className="p-6 text-slate-500">Loading booking flow...</div>;
+  }
+
   return (
-    <div className="h-full flex flex-col p-6 overflow-hidden">
-      <MultiStepProgress steps={steps} currentStep={step} />
+    <div className="p-6 space-y-6">
+      <h1 className="text-2xl font-semibold text-slate-900">{appointment.name}</h1>
+      <MultiStepProgress steps={stepLabels} currentStep={step} />
 
-      <div className="flex gap-6 flex-1 min-h-0 relative">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
-            className="flex-1 flex gap-6 h-full"
-          >
-            {/* Main Content Area */}
-            {step === 1 && (
-              <div className="flex-1 flex gap-6 min-w-0 h-full">
-                <div className="w-[280px] shrink-0 flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                  <div className="p-4 border-b border-slate-100">
-                    <h3 className="text-sm font-semibold text-slate-700">Choose Doctor</h3>
-                  </div>
-                  <div className="flex-1 overflow-y-auto">
-                    <DoctorCard 
-                      name="Amanda Clara" 
-                      specialty="Psychologist" 
-                      experience="12 yrs exp" 
-                      imageUrl="https://i.pravatar.cc/150?u=amanda" 
-                      specialtyChip="Psychology" 
-                      isActive={true} 
-                      onClick={nextStep}
-                    />
-                    <DoctorCard 
-                      name="Esther Howard" 
-                      specialty="Pediatrician" 
-                      experience="8 yrs exp" 
-                      imageUrl="https://i.pravatar.cc/150?u=esther" 
-                      specialtyChip="Pediatrics" 
-                    />
-                  </div>
-                </div>
-                <DoctorDetail />
-              </div>
-            )}
+      {step === 1 && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+          <h2 className="font-semibold text-slate-800">Select Provider</h2>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {appointment.providers.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setProviderId(p.id)}
+                className={`text-left border rounded-xl p-3 ${providerId === p.id ? "border-blue-500 bg-blue-50" : "border-slate-200"}`}
+              >
+                <p className="font-medium text-slate-900">{p.name}</p>
+                <p className="text-sm text-slate-500">{p.specialty || "Provider"}</p>
+              </button>
+            ))}
+          </div>
+          <Button disabled={!providerId} onClick={() => setStep(2)}>Next</Button>
+        </div>
+      )}
 
-            {step === 2 && (
-              <div className="flex-1 flex flex-col gap-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex gap-4 items-center h-[112px]">
-                  <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-slate-200 bg-slate-100">
-                    <img src="https://i.pravatar.cc/150?u=amanda" alt="Amanda Clara" className="w-full h-full object-cover" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-slate-800">Amanda Clara</h2>
-                    <p className="text-sm text-slate-500">Psychologist · 12 years experience</p>
-                  </div>
-                </div>
-                <div className="flex-1 flex justify-center items-center bg-white rounded-2xl shadow-sm border border-slate-100 border-dashed">
-                  <p className="text-slate-400">Select a date and time from the right panel</p>
-                </div>
-              </div>
-            )}
+      {step === 2 && (
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4">
+            <Calendar mode="single" selected={date} onSelect={setDate} disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))} />
+          </div>
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-4">
+            <h3 className="font-medium text-slate-800">Available Slots</h3>
+            <div className="grid grid-cols-2 gap-2">
+              {slots.map((s) => (
+                <button
+                  key={s.id}
+                  disabled={!s.isAvailable}
+                  onClick={() => setSlotId(s.id)}
+                  className={`border rounded-lg py-2 text-sm ${
+                    slotId === s.id ? "bg-blue-600 text-white border-blue-600" : "border-slate-200"
+                  } ${!s.isAvailable ? "opacity-40 cursor-not-allowed" : ""}`}
+                >
+                  {s.startTime}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
+              <Button disabled={!slotId} onClick={() => setStep(manageCapacity ? 3 : 3)}>Next</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
-            {step === 3 && (
-              <div className="flex-1 flex justify-center items-center bg-white/50 rounded-2xl">
-                <CapacityStepper value={capacity} onChange={setCapacity} max={10} onNext={nextStep} />
-              </div>
-            )}
+      {manageCapacity && step === 3 && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-md">
+          <h2 className="font-semibold mb-4 text-slate-800">Select Capacity</h2>
+          <CapacityStepper value={capacity} onChange={setCapacity} max={capacityMax} hideButton />
+          <div className="flex gap-2 mt-5">
+            <Button variant="outline" onClick={() => setStep(2)}>Back</Button>
+            <Button onClick={() => setStep(4)}>Next</Button>
+          </div>
+        </div>
+      )}
 
-            {step === 4 && (
-              <div className="flex-1 flex justify-center items-center bg-white/50 rounded-2xl">
-                <QuestionsForm onNext={nextStep} isAdvancePayment={advancePayment} />
-              </div>
-            )}
-
-            {step === 5 && (
-              <div className="flex-1 flex justify-center items-start pt-10">
-                <PaymentForm onNext={nextStep} price={1100} />
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Right Panel */}
-        {step === 2 ? (
-          <BookingRightPanel onNext={nextStep} />
-        ) : step !== 5 ? (
-          <BookingSummaryCard 
-            serviceName="Psychological Consultation"
-            providerName={step >= 2 ? "Amanda Clara" : undefined}
-            date={step >= 3 ? "Dec 12, 2026" : undefined}
-            time={step >= 3 ? "12:00 AM" : undefined}
-            capacity={step >= 4 ? capacity : undefined}
-            price={1100}
+      {step === questionsStep && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 max-w-2xl space-y-4">
+          <h2 className="font-semibold text-slate-800">Questions</h2>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Add notes for the organiser"
+            className="w-full min-h-28 border border-slate-200 rounded-xl p-3"
           />
-        ) : null}
-      </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setStep(manageCapacity ? 3 : 2)}>Back</Button>
+            <Button disabled={submitting} onClick={submitBooking}>{submitting ? "Booking..." : "Confirm Booking"}</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

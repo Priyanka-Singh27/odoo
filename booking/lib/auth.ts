@@ -68,6 +68,16 @@ export async function authorize(
   return { ok: true, user };
 }
 
+// ---------- requireAdmin ----------
+// Reusable guard for /api/admin/* routes.
+export async function requireAdmin() {
+  const auth = await authorize("admin");
+  if (!auth.ok) {
+    throw auth.response;
+  }
+  return auth.user;
+}
+
 // ---------- verifyOwnership ----------
 // For organiser routes: ensures the resource belongs to this user.
 // Admins bypass ownership checks.

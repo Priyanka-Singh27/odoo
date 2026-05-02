@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const userId = auth.ok ? auth.user.id : null;
 
   // If role=organiser is requested, ensure user is actually organiser
-  const isOrganiserView = roleParam === "organiser" && actualRole === "organiser";
+  const isOrganiserView = roleParam === "organiser" && (actualRole === "organiser" || actualRole === "admin");
 
   let query = `
     SELECT id, name, duration, provider_count, is_published, description, organiser_id, created_at
@@ -21,9 +21,11 @@ export async function GET(request: Request) {
   const params: string[] = [];
 
   if (isOrganiserView && userId) {
-    // Organisers see only their own appointments (ownership)
-    query += " WHERE organiser_id = ?";
-    params.push(userId);
+    // Organisers see their own appointments; admins see all
+    if (actualRole === "organiser") {
+      query += " WHERE organiser_id = ?";
+      params.push(userId);
+    }
   } else {
     // Everyone else sees only published
     query += " WHERE is_published = 1";

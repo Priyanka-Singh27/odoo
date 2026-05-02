@@ -33,6 +33,13 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
     { name: "Calendar", href: "/organizer/calendar", icon: BookOpen },
     { name: "Bookings", href: "/organizer/bookings", icon: Users },
     { name: "Reports", href: "/organizer/reports", icon: PieChart },
+  ];
+
+  const adminLinks = role === "admin"
+    ? [{ name: "Users", href: "/admin/users", icon: Users }]
+    : [];
+
+  const footerLinks = [
     { name: "Settings", href: "/organizer/settings", icon: Settings },
   ];
 
@@ -69,7 +76,7 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
 
         <div className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
           {navLinks.map((link) => {
-            const isActive = pathname === link.href || (link.href !== '/organiser/appointments' && pathname.startsWith(link.href));
+            const isActive = pathname === link.href || (link.href !== '/organizer/appointments' && pathname.startsWith(link.href));
             return (
               <Link
                 key={link.name}
@@ -79,6 +86,46 @@ export default function OrganiserLayout({ children }: { children: React.ReactNod
                   "flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium",
                   isActive 
                     ? "bg-blue-50 text-blue-700" 
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                )}
+              >
+                <link.icon className="w-4 h-4" />
+                {link.name}
+              </Link>
+            );
+          })}
+          {adminLinks.length > 0 && <div className="my-3 border-t border-slate-200" />}
+          {adminLinks.map((link) => {
+            const isActive = pathname === link.href || pathname.startsWith(link.href);
+            return (
+              <Link
+                key={link.name}
+                href={link.href}
+                onClick={() => setIsSidebarOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium",
+                  isActive
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                )}
+              >
+                <link.icon className="w-4 h-4" />
+                {link.name}
+              </Link>
+            );
+          })}
+          <div className="my-3 border-t border-slate-200" />
+          {footerLinks.map((link) => {
+            const isActive = pathname === link.href || pathname.startsWith(link.href);
+            return (
+              <Link
+                key={link.name}
+                href={link.href}
+                onClick={() => setIsSidebarOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium",
+                  isActive
+                    ? "bg-blue-50 text-blue-700"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 )}
               >

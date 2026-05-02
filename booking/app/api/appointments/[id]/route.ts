@@ -13,7 +13,19 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json(appointment);
+  const providers = db.prepare(`
+    SELECT p.id, u.full_name as name, p.specialty
+    FROM appointment_providers ap
+    JOIN providers p ON p.id = ap.provider_id
+    JOIN users u ON u.id = p.user_id
+    WHERE ap.appointment_id = ?
+    ORDER BY u.full_name ASC
+  `).all(id) as Array<{ id: string; name: string; specialty: string | null }>;
+
+  return NextResponse.json({
+    ...appointment,
+    providers,
+  });
 }
 
 export async function PATCH(

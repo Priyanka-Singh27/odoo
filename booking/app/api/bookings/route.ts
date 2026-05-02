@@ -47,8 +47,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await authorize();
   const body = await req.json();
-  const { appointmentId, providerId, slotId, customerId = "usr_cust_1", peopleCount = 1, answers = {} } = body;
+  const { appointmentId, providerId, slotId, customerId, peopleCount = 1, answers = {} } = body;
+  const resolvedCustomerId = auth.ok ? auth.user.id : (customerId || "usr_cust_1");
 
   if (!appointmentId || !providerId || !slotId) {
     return NextResponse.json({ error: "appointmentId, providerId, slotId are required" }, { status: 400 });
@@ -83,7 +85,7 @@ export async function POST(req: NextRequest) {
     reserved = true;
 
     db.prepare(`INSERT INTO bookings (id, appointment_id, customer_id, provider_id, slot_id, slot_date, start_time, end_time, people_count, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(bookingId, appointmentId, customerId, providerId, slotId, slot.slot_date, slot.start_time, slot.end_time, peopleCount, status);
+      .run(bookingId, appointmentId, resolvedCustomerId, providerId, slotId, slot.slot_date, slot.start_time, slot.end_time, peopleCount, status);
     
     // Insert answers
     const insertAnswer = db.prepare(`INSERT INTO booking_answers (id, booking_id, question_key, answer_value) VALUES (?, ?, ?, ?)`);

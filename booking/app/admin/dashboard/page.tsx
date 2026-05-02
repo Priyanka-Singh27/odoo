@@ -1,73 +1,129 @@
 "use client";
 
-import { ShieldCheck, Users, Settings, Database, Activity, LayoutGrid } from "lucide-react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { format } from "date-fns";
 
-export default function AdminDashboard() {
-  const stats = [
-    { label: "Total Users", value: "2,543", icon: Users, color: "text-blue-600", bgColor: "bg-blue-50" },
-    { label: "Active Nodes", value: "12", icon: Activity, color: "text-emerald-600", bgColor: "bg-emerald-50" },
-    { label: "DB Health", value: "Optimal", icon: Database, color: "text-amber-600", bgColor: "bg-amber-50" },
-    { label: "Total Revenue", value: "$42.5k", icon: ShieldCheck, color: "text-purple-600", bgColor: "bg-purple-50" },
+type Stats = {
+  totalUsers: number;
+  totalProviders: number;
+  totalAppointments: number;
+  newUsersThisWeek: number;
+  newProvidersThisWeek: number;
+  appointmentsToday: number;
+};
+
+type RecentBooking = {
+  id: string;
+  customer_name: string;
+  service_name: string;
+  provider_name: string;
+  slot_date: string;
+  start_time: string;
+  status: string;
+};
+
+export default function AdminDashboardPage() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [recent, setRecent] = useState<RecentBooking[]>([]);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingRecent, setLoadingRecent] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoadingStats(true);
+      setLoadingRecent(true);
+      const [statsRes, recentRes] = await Promise.all([
+        fetch("/api/admin/stats"),
+        fetch("/api/admin/recent-bookings"),
+      ]);
+      if (statsRes.ok) setStats(await statsRes.json());
+      if (recentRes.ok) {
+        const data = await recentRes.json();
+        setRecent(data.data || []);
+      }
+      setLoadingStats(false);
+      setLoadingRecent(false);
+    };
+    void load();
+  }, []);
+
+  const kpis = [
+    {
+      label: "Total Users",
+      value: stats?.totalUsers ?? 0,
+      trend: `↑ ${stats?.newUsersThisWeek ?? 0} this week`,
+    },
+    {
+      label: "Total Providers",
+      value: stats?.totalProviders ?? 0,
+      trend: `↑ ${stats?.newProvidersThisWeek ?? 0} this week`,
+    },
+    {
+      label: "Total Appointments",
+      value: stats?.totalAppointments ?? 0,
+      trend: `↑ ${stats?.appointmentsToday ?? 0} today`,
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Admin Terminal</h1>
-            <p className="text-slate-500 mt-1">System-wide governance and global configuration.</p>
-          </div>
-          <div className="flex items-center gap-3">
-             <Link href="/">
-                <button className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors shadow-sm">
-                   Exit Terminal
-                </button>
-             </Link>
-             <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm">
-                Global Settings
-             </button>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-semibold text-slate-900">Admin Dashboard</h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, i) => (
-            <div key={i} className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
-              <div className={`w-10 h-10 ${stat.bgColor} ${stat.color} rounded-lg flex items-center justify-center mb-4`}>
-                <stat.icon className="w-5 h-5" />
-              </div>
-              <p className="text-sm font-medium text-slate-500">{stat.label}</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1">{stat.value}</p>
-            </div>
-          ))}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {kpis.map((kpi) => (
+          <div key={kpi.label} className="bg-white border border-slate-100 rounded-2xl p-5">
+            <p className="text-[13px] text-slate-500">{kpi.label}</p>
+            <p className="text-3xl font-semibold text-slate-900 mt-2">
+              {loadingStats ? <span className="inline-block h-8 w-20 bg-slate-100 animate-pulse rounded" /> : kpi.value}
+            </p>
+            <p className="text-xs text-slate-500 mt-3">{kpi.trend}</p>
+          </div>
+        ))}
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-           <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-8 shadow-sm h-96 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-4">
-                 <LayoutGrid className="w-8 h-8" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900">System Logs</h3>
-              <p className="text-slate-500 max-w-sm mt-2">Real-time system event logs and audit trails will appear here once configured.</p>
-           </div>
-           <div className="bg-white border border-slate-200 rounded-2xl p-8 shadow-sm flex flex-col">
-              <h3 className="text-lg font-semibold text-slate-900 mb-6">Critical Actions</h3>
-              <div className="space-y-4">
-                 <button className="w-full text-left px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl hover:border-slate-200 transition-colors group">
-                    <p className="text-sm font-semibold text-slate-900">Database Backup</p>
-                    <p className="text-xs text-slate-500">Last backup: 2h ago</p>
-                 </button>
-                 <button className="w-full text-left px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl hover:border-slate-200 transition-colors group">
-                    <p className="text-sm font-semibold text-slate-900">User Audit</p>
-                    <p className="text-xs text-slate-500">Scan for suspicious activity</p>
-                 </button>
-                 <button className="w-full text-left px-4 py-3 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100 transition-colors group">
-                    <p className="text-sm font-semibold text-red-700">Force Global Logoff</p>
-                    <p className="text-xs text-red-500">Terminate all active sessions</p>
-                 </button>
-              </div>
-           </div>
+      <div className="bg-white border border-slate-100 rounded-2xl p-5">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Recent Activity</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="border-b border-slate-100">
+              <tr>
+                <th className="py-2 text-[13px] text-slate-500">Customer</th>
+                <th className="py-2 text-[13px] text-slate-500">Service</th>
+                <th className="py-2 text-[13px] text-slate-500">Provider</th>
+                <th className="py-2 text-[13px] text-slate-500">Date</th>
+                <th className="py-2 text-[13px] text-slate-500">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingRecent ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i} className="border-b border-slate-50">
+                    <td className="py-3"><span className="inline-block h-4 w-24 bg-slate-100 animate-pulse rounded" /></td>
+                    <td className="py-3"><span className="inline-block h-4 w-32 bg-slate-100 animate-pulse rounded" /></td>
+                    <td className="py-3"><span className="inline-block h-4 w-24 bg-slate-100 animate-pulse rounded" /></td>
+                    <td className="py-3"><span className="inline-block h-4 w-20 bg-slate-100 animate-pulse rounded" /></td>
+                    <td className="py-3"><span className="inline-block h-4 w-16 bg-slate-100 animate-pulse rounded" /></td>
+                  </tr>
+                ))
+              ) : recent.length === 0 ? (
+                <tr>
+                  <td className="py-5 text-[13px] text-slate-500" colSpan={5}>No bookings yet.</td>
+                </tr>
+              ) : (
+                recent.map((row) => (
+                  <tr key={row.id} className="border-b border-slate-50">
+                    <td className="py-3 text-[13px] text-slate-800">{row.customer_name}</td>
+                    <td className="py-3 text-[13px] text-slate-800">{row.service_name}</td>
+                    <td className="py-3 text-[13px] text-slate-800">{row.provider_name}</td>
+                    <td className="py-3 text-[13px] text-slate-600">
+                      {format(new Date(`${row.slot_date}T${row.start_time}`), "MMM d, yyyy h:mm a")}
+                    </td>
+                    <td className="py-3 text-[13px] text-slate-800 capitalize">{row.status}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

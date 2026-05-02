@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import AppointmentCard, { AppointmentType } from "./AppointmentCard";
 import AppointmentSidebar from "./AppointmentSidebar";
-import BookingFlowModal from "./BookingFlowModal";
 
 export default function CustomerHomeClient({ appointments }: { appointments: AppointmentType[] }) {
+  const router = useRouter();
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentType | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleCardClick = (appointment: AppointmentType) => {
     setSelectedAppointment(appointment);
@@ -16,9 +16,9 @@ export default function CustomerHomeClient({ appointments }: { appointments: App
   };
 
   const handleBookClick = () => {
+    if (!selectedAppointment) return;
     setIsSidebarOpen(false);
-    // Slight delay to allow sidebar to close before modal pops up
-    setTimeout(() => setIsModalOpen(true), 150);
+    router.push(`/book/${selectedAppointment.id}`);
   };
 
   return (
@@ -54,11 +54,6 @@ export default function CustomerHomeClient({ appointments }: { appointments: App
         onBook={handleBookClick} 
       />
 
-      <BookingFlowModal 
-        appointment={selectedAppointment}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
     </div>
   );
 }

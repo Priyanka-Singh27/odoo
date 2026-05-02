@@ -67,16 +67,16 @@ export default function AppHeader() {
         <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
 
         <DropdownMenu>
-           <DropdownMenuTrigger asChild>
-              <div className="flex items-center gap-2 cursor-pointer p-1.5 hover:bg-slate-50 rounded-md transition-colors ml-1">
+           <DropdownMenuTrigger className="flex items-center gap-2 cursor-pointer p-1.5 hover:bg-slate-50 rounded-md transition-colors ml-1">
+              <div>
                  <div className="w-8 h-8 rounded bg-slate-100 overflow-hidden border border-slate-200">
                     <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="Avatar" className="w-full h-full object-cover" />
                  </div>
-                 <div className="hidden sm:block">
-                    <p className="text-sm font-medium text-slate-700">Cameron W.</p>
-                 </div>
-                 <ChevronDown className="w-4 h-4 text-slate-400" />
               </div>
+              <div className="hidden sm:block">
+                 <p className="text-sm font-medium text-slate-700">Cameron W.</p>
+              </div>
+              <ChevronDown className="w-4 h-4 text-slate-400" />
            </DropdownMenuTrigger>
            <DropdownMenuContent align="end" className="w-56 p-1 rounded-md border-slate-200">
               <div className="px-2 py-3 flex items-center gap-3">

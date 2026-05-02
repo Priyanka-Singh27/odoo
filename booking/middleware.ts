@@ -27,10 +27,10 @@ const LOGIN_PAGE_ROLE: Record<string, string> = {
   '/admin/login': 'admin',
 };
 
-// Routes that require a specific role
-const ROLE_PROTECTED: { prefix: string; role: string }[] = [
-  { prefix: '/organizer', role: 'organiser' },
-  { prefix: '/admin', role: 'admin' },
+// Routes that require specific role(s)
+const ROLE_PROTECTED: { prefix: string; roles: string[] }[] = [
+  { prefix: '/organizer', roles: ['organiser', 'admin'] },
+  { prefix: '/admin', roles: ['admin'] },
 ];
 
 export async function middleware(req: NextRequest) {
@@ -79,11 +79,10 @@ export async function middleware(req: NextRequest) {
 
   // If logged in, enforce role-based access for protected areas
   if (payload) {
-    for (const { prefix, role } of ROLE_PROTECTED) {
-      if (pathname.startsWith(prefix) && payload.role !== role) {
-        const dashboard = ROLE_DASHBOARDS[payload.role] || '/home';
-        console.log(`[middleware] → wrong role for ${prefix} → redirect to ${dashboard}`);
-        return NextResponse.redirect(new URL(dashboard, req.url));
+    for (const { prefix, roles } of ROLE_PROTECTED) {
+      if (pathname.startsWith(prefix) && !roles.includes(payload.role)) {
+        console.log(`[middleware] → wrong role for ${prefix} → redirect to /login`);
+        return NextResponse.redirect(new URL('/login', req.url));
       }
     }
   }

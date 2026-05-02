@@ -22,9 +22,16 @@ export async function POST(req: NextRequest) {
     const user = db.prepare('SELECT id, password_hash, role, is_active, is_verified FROM users WHERE email = ?').get(email) as any;
     console.log(`[login] User found=${!!user} role=${user?.role} is_active=${user?.is_active} is_verified=${user?.is_verified}`);
     
-    if (!user || user.is_active === 0) {
+    if (!user) {
       console.log('[login] → user not found or inactive');
       return NextResponse.json({ error: 'Invalid Email or Password' }, { status: 401 });
+    }
+
+    if (user.is_active === 0) {
+      return NextResponse.json(
+        { error: 'Your account has been deactivated. Please contact support.' },
+        { status: 401 }
+      );
     }
 
     const isMatch = await verifyPassword(password, user.password_hash);
