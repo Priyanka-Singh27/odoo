@@ -107,3 +107,15 @@ CREATE INDEX IF NOT EXISTS idx_bookings_customer ON bookings(customer_id, create
 CREATE INDEX IF NOT EXISTS idx_bookings_slot ON bookings(slot_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_provider_date ON bookings(provider_id, slot_date, start_time);
 CREATE INDEX IF NOT EXISTS idx_booking_answers_booking ON booking_answers(booking_id);
+
+-- Admin audit trail for RBAC accountability
+CREATE TABLE IF NOT EXISTS admin_audit (
+  id TEXT PRIMARY KEY,
+  admin_id TEXT NOT NULL,
+  action TEXT NOT NULL,
+  details TEXT DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(admin_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_audit_admin ON admin_audit(admin_id, created_at);

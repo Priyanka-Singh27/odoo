@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { resolveUserRole } from "@/lib/role";
+import { authorize, verifyOwnership, logAdminAction } from "@/lib/auth";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   
@@ -18,13 +18,15 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const role = await resolveUserRole();
-  if (role !== 'organiser') {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const auth = await authorize("organiser", "admin");
+  if (!auth.ok) return auth.response;
+
+  // Ownership check: organisers can only edit their own appointments
+  const ownership = verifyOwnership("appointments", id, auth.user.id, auth.user.role);
+  if (!ownership.allowed) return ownership.response!;
 
   const data = await request.json();
   
@@ -33,20 +35,32 @@ export async function PATCH(
       .run(data.isPublished ? 1 : 0, id);
   }
 
+  // Audit log for admin actions
+  if (auth.user.role === "admin") {
+    logAdminAction(auth.user.id, "appointment.update", { appointmentId: id, changes: data });
+  }
+
   return NextResponse.json({ success: true });
 }
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const role = await resolveUserRole();
-  if (role !== 'organiser') {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const auth = await authorize("organiser", "admin");
+  if (!auth.ok) return auth.response;
+
+  // Ownership check
+  const ownership = verifyOwnership("appointments", id, auth.user.id, auth.user.role);
+  if (!ownership.allowed) return ownership.response!;
 
   db.prepare(`DELETE FROM appointments WHERE id = ?`).run(id);
+
+  // Audit log for admin actions
+  if (auth.user.role === "admin") {
+    logAdminAction(auth.user.id, "appointment.delete", { appointmentId: id });
+  }
 
   return NextResponse.json({ success: true });
 }

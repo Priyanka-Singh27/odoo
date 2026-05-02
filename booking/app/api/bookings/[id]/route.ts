@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { resolveUserRole } from "@/lib/role";
+import { authorize, logAdminAction } from "@/lib/auth";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   
@@ -31,13 +31,11 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const role = await resolveUserRole();
-  if (role !== 'organiser') {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const auth = await authorize("organiser", "admin");
+  if (!auth.ok) return auth.response;
 
   const data = await request.json();
   const { status } = data; // 'confirmed' or 'cancelled'
@@ -54,6 +52,11 @@ export async function PATCH(
       }
     });
     tx();
+  }
+
+  // Audit log for admin actions
+  if (auth.user.role === "admin") {
+    logAdminAction(auth.user.id, `booking.${status}`, { bookingId: id });
   }
 
   return NextResponse.json({ success: true });

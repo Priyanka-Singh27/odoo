@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, CalendarDays } from "lucide-react";
 import { loginSchema } from "@/lib/validators/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,43 +26,35 @@ export default function OrganizerLoginPage() {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = async (data: LoginFormValues) => {
     setIsLoading(true);
     setError(null);
     try {
+      console.log('[organizer-login] Submitting login for:', data.email);
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      
       const resData = await res.json();
-      
+      console.log('[organizer-login] Response:', res.status, resData);
       if (!res.ok) {
-        setError(resData.error || "An error occurred");
-        if (resData.redirect) {
-          router.push(resData.redirect);
-        }
+        setError(resData.error || "Invalid credentials. Please try again.");
       } else {
-        // Login successful - redirect based on role
         const role = resData.role;
-        let dashboardUrl = '/home';
-        
-        if (role === 'organiser') {
-          dashboardUrl = '/organizer/appointments';
-        } else if (role === 'admin') {
-          dashboardUrl = '/admin/dashboard';
+        console.log(`[organizer-login] Login success, role=${role}, redirecting...`);
+        if (role === "organiser") {
+          router.push("/organizer/appointments");
+        } else if (role === "admin") {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/home");
         }
-        
-        router.push(dashboardUrl);
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
@@ -70,69 +62,92 @@ export default function OrganizerLoginPage() {
   };
 
   return (
-    <div className="w-full">
-      <div className="mb-8 lg:hidden flex justify-center">
-        <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md">
-          A
+    <div className="min-h-screen w-full flex">
+      {/* Left branding panel */}
+      <div className="hidden lg:flex lg:w-1/2 bg-slate-900 flex-col justify-center items-center p-12 text-center relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="w-14 h-14 bg-blue-600 rounded-xl flex items-center justify-center text-white mb-8 mx-auto shadow-lg">
+            <CalendarDays className="w-7 h-7" />
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-4 tracking-tight">Organizer Portal</h1>
+          <p className="text-slate-400 text-base max-w-sm">
+            Manage your appointments, availability, and bookings all in one place.
+          </p>
+        </div>
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
         </div>
       </div>
-      
-      <h2 className="text-2xl font-bold text-slate-900 mb-2 lg:text-left text-center">Organizer Login</h2>
-      <p className="text-slate-500 mb-6 lg:text-left text-center text-sm">Sign in to manage your appointments and schedule.</p>
-      
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input 
-            id="email" 
-            type="email" 
-            placeholder="name@example.com" 
-            {...register("email")} 
-            className="h-11 rounded-xl"
-          />
-          {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
-        </div>
-        
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
-            <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-500 font-medium">
-              Forgot password?
-            </Link>
+
+      {/* Right form panel */}
+      <div className="w-full lg:w-1/2 bg-white flex items-center justify-center p-6 sm:p-12">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 lg:hidden flex justify-center">
+            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white">
+              <CalendarDays className="w-6 h-6" />
+            </div>
           </div>
-          <div className="relative">
-            <Input 
-              id="password" 
-              type={showPassword ? "text" : "password"} 
-              {...register("password")} 
-              className="h-11 rounded-xl pr-10"
-            />
-            <button 
-              type="button" 
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              onClick={() => setShowPassword(!showPassword)}
+
+          <h2 className="text-2xl font-bold text-slate-900 mb-1">Organizer Login</h2>
+          <p className="text-slate-500 mb-8 text-sm">Sign in to manage your appointments and schedule.</p>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                {...register("email")}
+                className="h-11"
+              />
+              {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  {...register("password")}
+                  className="h-11 pr-10"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+            </div>
+
+            {error && (
+              <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
+                {error}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white"
             >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-          {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
+              {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Log In
+            </Button>
+          </form>
+
+          <p className="mt-8 text-center text-sm">
+            <Link href="/" className="text-blue-600 hover:text-blue-500 font-medium">
+              ← Back to portal selection
+            </Link>
+          </p>
         </div>
-
-        {error && (
-          <div className="p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">
-            {error}
-          </div>
-        )}
-
-        <Button 
-          type="submit" 
-          disabled={isLoading} 
-          className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl mt-2"
-        >
-          {isLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-          Log In
-        </Button>
-      </form>
+      </div>
     </div>
   );
 }

@@ -1,13 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { resolveUserRole } from "@/lib/role";
+import { authorize } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
-  const role = await resolveUserRole();
-  if (role !== 'organiser' && role !== 'admin') {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const auth = await authorize("organiser", "admin");
+  if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
@@ -25,6 +23,13 @@ export async function GET(req: NextRequest) {
   `;
 
   const params: any[] = [];
+
+  // Organisers only see bookings for their own appointments (ownership)
+  if (auth.user.role === "organiser") {
+    query += " AND a.organiser_id = ?";
+    params.push(auth.user.id);
+  }
+
   if (status) {
     query += " AND b.status = ?";
     params.push(status);

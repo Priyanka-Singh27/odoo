@@ -1,27 +1,37 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { resolveUserRole } from "@/lib/role";
+import { authorize } from "@/lib/auth";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const roleParam = searchParams.get("role");
-  const actualRole = await resolveUserRole();
+
+  // Try to resolve user (optional — public can see published appointments)
+  const auth = await authorize(); // no role restriction, just resolve user
+  const actualRole = auth.ok ? auth.user.role : "customer";
+  const userId = auth.ok ? auth.user.id : null;
 
   // If role=organiser is requested, ensure user is actually organiser
   const isOrganiserView = roleParam === "organiser" && actualRole === "organiser";
 
   let query = `
-    SELECT id, name, duration, provider_count, is_published, description, created_at
+    SELECT id, name, duration, provider_count, is_published, description, organiser_id, created_at
     FROM appointments
   `;
+  const params: string[] = [];
 
-  if (!isOrganiserView) {
-    query += " WHERE is_published = 1 ";
+  if (isOrganiserView && userId) {
+    // Organisers see only their own appointments (ownership)
+    query += " WHERE organiser_id = ?";
+    params.push(userId);
+  } else {
+    // Everyone else sees only published
+    query += " WHERE is_published = 1";
   }
 
   query += " ORDER BY created_at DESC";
 
-  const rows = db.prepare(query).all() as any[];
+  const rows = db.prepare(query).all(...params) as any[];
 
   return NextResponse.json({
     data: rows.map((row) => ({
@@ -37,24 +47,22 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const role = await resolveUserRole();
-  if (role !== 'organiser') {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-  }
+  const auth = await authorize("organiser", "admin");
+  if (!auth.ok) return auth.response;
 
   const data = await request.json();
   const id = `apt_${Math.random().toString(36).substr(2, 9)}`;
-  
+
   db.prepare(`
     INSERT INTO appointments (id, organiser_id, name, description, duration, provider_count, is_published)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
-    id, 
-    'usr_org_1', // Hardcoded for now as per project context
-    data.name, 
-    data.description || '', 
-    data.duration || 30, 
-    0, 
+    id,
+    auth.user.id, // Use actual logged-in user instead of hardcoded ID
+    data.name,
+    data.description || '',
+    data.duration || 30,
+    0,
     data.isPublished ? 1 : 0
   );
 

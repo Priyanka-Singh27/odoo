@@ -16,16 +16,21 @@ export async function POST(req: NextRequest) {
     }
 
     const { email, password } = result.data;
+    console.log(`[login] Attempt for email=${email}`);
 
     // Find user
     const user = db.prepare('SELECT id, password_hash, role, is_active, is_verified FROM users WHERE email = ?').get(email) as any;
+    console.log(`[login] User found=${!!user} role=${user?.role} is_active=${user?.is_active} is_verified=${user?.is_verified}`);
     
     if (!user || user.is_active === 0) {
+      console.log('[login] → user not found or inactive');
       return NextResponse.json({ error: 'Invalid Email or Password' }, { status: 401 });
     }
 
     const isMatch = await verifyPassword(password, user.password_hash);
+    console.log(`[login] Password match=${isMatch}`);
     if (!isMatch) {
+      console.log('[login] → password mismatch');
       return NextResponse.json({ error: 'Invalid Email or Password' }, { status: 401 });
     }
 
@@ -54,6 +59,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Success
+    console.log(`[login] ✅ Success! userId=${user.id} role=${user.role}`);
     const token = signToken({ userId: user.id, email, role: user.role });
     const response = NextResponse.json({ role: user.role }, { status: 200 });
 

@@ -115,6 +115,15 @@ if (!globalForDb.db) {
       answer_value TEXT NOT NULL,
       FOREIGN KEY(booking_id) REFERENCES bookings(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS admin_audit (
+      id TEXT PRIMARY KEY,
+      admin_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      details TEXT DEFAULT '{}',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(admin_id) REFERENCES users(id) ON DELETE CASCADE
+    );
   `);
 
   ensureColumn('users', 'password_hash', 'TEXT');
