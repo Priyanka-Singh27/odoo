@@ -4,7 +4,10 @@ import { db } from "@/lib/db";
 export async function GET() {
   const rows = db
     .prepare(
-      `SELECT id, name, duration, provider_count, is_published FROM appointments`,
+      `SELECT id, name, duration, provider_count, is_published
+       FROM appointments
+       WHERE is_published = 1
+       ORDER BY created_at DESC`,
     )
     .all() as {
     id: string;
@@ -14,15 +17,13 @@ export async function GET() {
     is_published: number;
   }[];
 
-  const appointments = rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    duration: row.duration,
-    providerCount: row.provider_count,
-    isPublished: row.is_published === 1,
-  }));
-
   return NextResponse.json({
-    data: appointments,
+    data: rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      duration: row.duration,
+      providerCount: row.provider_count,
+      isPublished: row.is_published === 1,
+    })),
   });
 }
