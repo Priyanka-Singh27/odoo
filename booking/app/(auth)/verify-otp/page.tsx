@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,7 +16,15 @@ import {
 
 type OtpFormValues = z.infer<typeof otpSchema>;
 
-export default function VerifyOtpPage() {
+export default function VerifyOtpPageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-blue-600" /></div>}>
+      <VerifyOtpPage />
+    </Suspense>
+  );
+}
+
+function VerifyOtpPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const purpose = searchParams?.get("purpose") || "verify";
