@@ -15,7 +15,10 @@ export async function GET() {
   }
 
   const bookings = db.prepare(`
-    SELECT b.id, b.slot_date, b.start_time, b.status, b.people_count, a.name as appointment_name, u.full_name as provider_name
+    SELECT 
+      b.id, b.slot_date, b.start_time, b.status, b.people_count, 
+      a.name as appointment_name, a.location, a.duration,
+      u.full_name as provider_name
     FROM bookings b
     JOIN appointments a ON a.id = b.appointment_id
     JOIN providers p ON p.id = b.provider_id
