@@ -79,7 +79,7 @@ export default function Home() {
         {!isLoading && role !== 'customer' && (
           <div className="flex justify-center">
             <Link 
-              href={role === 'organiser' ? '/organiser/appointments' : '/admin/dashboard'}
+              href={role === 'organiser' ? '/organizer/appointments' : '/admin/dashboard'}
               className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-sm"
             >
               Return to your {role} session

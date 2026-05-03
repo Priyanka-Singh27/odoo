@@ -50,7 +50,7 @@ export default function LoginPage() {
         if (resData.redirect) router.push(resData.redirect);
       } else {
         const role = resData.role;
-        if (role === "organiser") router.push("/organiser/appointments");
+        if (role === "organiser") router.push("/organizer/appointments");
         else if (role === "admin") router.push("/admin/dashboard");
         else router.push("/home");
       }
