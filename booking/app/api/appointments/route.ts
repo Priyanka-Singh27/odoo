@@ -13,25 +13,37 @@ export async function GET(request: Request) {
 
   // If role=organiser is requested, ensure user is actually organiser
   const isOrganiserView = roleParam === "organiser" && (actualRole === "organiser" || actualRole === "admin");
+  const isAdminView = roleParam === "admin" && actualRole === "admin";
 
-  let query = `
-    SELECT id, name, duration, provider_count, is_published, description, organiser_id, created_at
-    FROM appointments
-  `;
+  let query: string;
   const params: string[] = [];
 
-  if (isOrganiserView && userId) {
-    // Organisers see their own appointments; admins see all
+  if (isAdminView) {
+    // Admin sees ALL appointments with organiser name
+    query = `
+      SELECT a.id, a.name, a.duration, a.provider_count, a.is_published, a.description,
+             a.organiser_id, a.created_at, a.location, a.appointment_type,
+             u.full_name as organiser_name
+      FROM appointments a
+      LEFT JOIN users u ON u.id = a.organiser_id
+      ORDER BY a.created_at DESC
+    `;
+  } else if (isOrganiserView && userId) {
+    query = `
+      SELECT id, name, duration, provider_count, is_published, description, organiser_id, created_at, location, appointment_type
+      FROM appointments
+    `;
     if (actualRole === "organiser") {
       query += " WHERE organiser_id = ?";
       params.push(userId);
     }
+    query += " ORDER BY created_at DESC";
   } else {
-    // Everyone else sees only published
-    query += " WHERE is_published = 1";
+    query = `
+      SELECT id, name, duration, provider_count, is_published, description, organiser_id, created_at, location, appointment_type
+      FROM appointments WHERE is_published = 1 ORDER BY created_at DESC
+    `;
   }
-
-  query += " ORDER BY created_at DESC";
 
   const rows = db.prepare(query).all(...params) as any[];
 
@@ -41,9 +53,13 @@ export async function GET(request: Request) {
       name: row.name,
       duration: row.duration,
       providerCount: row.provider_count,
-      is_published: row.is_published === 1,
+      is_published: row.is_published === 1 ? 1 : 0,
       description: row.description,
-      createdAt: row.created_at,
+      organiser_id: row.organiser_id,
+      organiser_name: row.organiser_name || undefined,
+      location: row.location,
+      appointment_type: row.appointment_type,
+      created_at: row.created_at,
     })),
   });
 }

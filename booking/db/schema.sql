@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS appointments (
   max_bookings_per_slot INTEGER NOT NULL DEFAULT 1,
   advance_payment INTEGER NOT NULL DEFAULT 0,
   manual_confirmation INTEGER NOT NULL DEFAULT 0,
+  location TEXT,
+  appointment_type TEXT NOT NULL DEFAULT 'user',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY(organiser_id) REFERENCES users(id) ON DELETE CASCADE
 );
