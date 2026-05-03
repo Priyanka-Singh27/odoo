@@ -11,7 +11,6 @@ export default function AppSidebar() {
   const navItems = [
     { href: "/home", icon: LayoutGrid, label: "Explore" },
     { href: "/appointments", icon: Calendar, label: "Schedule" },
-    { href: "/history", icon: History, label: "Activity" },
     { href: "/profile", icon: UserCircle, label: "Profile" },
   ];
 
