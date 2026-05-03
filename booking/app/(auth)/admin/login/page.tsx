@@ -55,7 +55,7 @@ export default function AdminLoginPage() {
         let dashboardUrl = '/home';
         
         if (role === 'organiser') {
-          dashboardUrl = '/organizer/appointments';
+          dashboardUrl = '/organizer/dashboard';
         } else if (role === 'admin') {
           dashboardUrl = '/admin/dashboard';
         }

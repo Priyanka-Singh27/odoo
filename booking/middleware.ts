@@ -16,7 +16,7 @@ const PUBLIC_ROUTES = [
 // After login, redirect to these dashboards based on role
 const ROLE_DASHBOARDS: Record<string, string> = {
   customer: '/home',
-  organiser: '/organizer/appointments',
+  organiser: '/organizer/dashboard',
   admin: '/admin/dashboard',
 };
 

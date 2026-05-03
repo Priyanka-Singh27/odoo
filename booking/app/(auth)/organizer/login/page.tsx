@@ -47,7 +47,7 @@ export default function OrganizerLoginPage() {
         const role = resData.role;
         console.log(`[organizer-login] Login success, role=${role}, redirecting...`);
         if (role === "organiser") {
-          router.push("/organizer/appointments");
+          router.push("/organizer/dashboard");
         } else if (role === "admin") {
           router.push("/admin/dashboard");
         } else {
