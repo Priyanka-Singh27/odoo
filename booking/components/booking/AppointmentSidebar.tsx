@@ -12,7 +12,7 @@ interface AppointmentSidebarProps {
 export default function AppointmentSidebar({ appointment, isOpen, onClose, onBook }: AppointmentSidebarProps) {
   if (!isOpen || !appointment) return null;
 
-  const imageUrl = appointment.image_url || `https://images.unsplash.com/photo-1666214280557-f1b5022eb634?w=500&q=80`;
+  const imageUrl = appointment.cover_image || appointment.image_url || `https://images.unsplash.com/photo-1666214280557-f1b5022eb634?w=500&q=80`;
   const location = appointment.location || "Main Clinic";
   const providers = appointment.provider_data ? JSON.parse(appointment.provider_data).map((p: any) => p.name) : [];
 

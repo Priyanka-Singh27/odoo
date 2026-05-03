@@ -76,6 +76,7 @@ if (!globalForDb.db) {
       advance_payment INTEGER NOT NULL DEFAULT 0,
       manual_confirmation INTEGER NOT NULL DEFAULT 0,
       location TEXT,
+      cover_image TEXT,
       appointment_type TEXT NOT NULL DEFAULT 'user',
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(organiser_id) REFERENCES users(id) ON DELETE CASCADE
@@ -246,6 +247,11 @@ if (!globalForDb.db) {
       ('slot_3', 'apt_psy_01', 'prov_2', '2026-05-03', '10:00', '10:30', 5, 2, 'available'),
       ('slot_4', 'apt_ped_01', 'prov_2', '2026-05-04', '11:00', '11:45', 1, 0, 'available');
   `);
+
+  // Migrations — add columns that may not exist in older databases
+  try {
+    db.exec(`ALTER TABLE appointments ADD COLUMN cover_image TEXT`);
+  } catch { /* column already exists */ }
 
   globalForDb.db = db;
 }

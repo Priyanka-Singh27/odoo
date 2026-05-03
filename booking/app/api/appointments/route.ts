@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     // Admin sees ALL appointments with organiser name
     query = `
       SELECT a.id, a.name, a.duration, a.provider_count, a.is_published, a.description,
-             a.organiser_id, a.created_at, a.location, a.appointment_type,
+             a.organiser_id, a.created_at, a.location, a.appointment_type, a.cover_image,
              u.full_name as organiser_name
       FROM appointments a
       LEFT JOIN users u ON u.id = a.organiser_id
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     `;
   } else if (isOrganiserView && userId) {
     query = `
-      SELECT id, name, duration, provider_count, is_published, description, organiser_id, created_at, location, appointment_type
+      SELECT id, name, duration, provider_count, is_published, description, organiser_id, created_at, location, appointment_type, cover_image
       FROM appointments
     `;
     if (actualRole === "organiser") {
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     query += " ORDER BY created_at DESC";
   } else {
     query = `
-      SELECT id, name, duration, provider_count, is_published, description, organiser_id, created_at, location, appointment_type
+      SELECT id, name, duration, provider_count, is_published, description, organiser_id, created_at, location, appointment_type, cover_image
       FROM appointments WHERE is_published = 1 ORDER BY created_at DESC
     `;
   }
@@ -59,6 +59,7 @@ export async function GET(request: Request) {
       organiser_name: row.organiser_name || undefined,
       location: row.location,
       appointment_type: row.appointment_type,
+      cover_image: row.cover_image || null,
       created_at: row.created_at,
     })),
   });
@@ -75,9 +76,9 @@ export async function POST(request: Request) {
     db.prepare(`
       INSERT INTO appointments (
         id, organiser_id, name, description, duration, provider_count, is_published,
-        appointment_type, manage_capacity, max_bookings_per_slot, advance_payment, manual_confirmation
+        appointment_type, manage_capacity, max_bookings_per_slot, advance_payment, manual_confirmation, cover_image, location
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id,
       auth.user.id,
@@ -90,7 +91,9 @@ export async function POST(request: Request) {
       data.manage_capacity ? 1 : 0,
       data.max_bookings_per_slot || 1,
       data.advance_payment ? 1 : 0,
-      data.manualConfirmation ? 1 : 0
+      data.manualConfirmation ? 1 : 0,
+      data.cover_image || null,
+      data.location || null
     );
 
     // Save questions if they exist

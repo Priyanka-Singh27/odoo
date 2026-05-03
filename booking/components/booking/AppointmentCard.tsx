@@ -12,11 +12,12 @@ export interface AppointmentType {
   manual_confirmation: number;
   provider_data?: string;
   image_url?: string;
+  cover_image?: string;
   location?: string;
 }
 
 export default function AppointmentCard({ appointment, onClick }: { appointment: AppointmentType, onClick: () => void }) {
-  const imageUrl = appointment.image_url || `https://images.unsplash.com/photo-1666214280557-f1b5022eb634?w=500&q=80`;
+  const imageUrl = appointment.cover_image || appointment.image_url || `https://images.unsplash.com/photo-1666214280557-f1b5022eb634?w=500&q=80`;
   const location = appointment.location || "Main Clinic";
   const providers = appointment.provider_data ? JSON.parse(appointment.provider_data).map((p: any) => p.name) : [];
 

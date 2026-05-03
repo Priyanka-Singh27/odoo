@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { 
   ArrowLeft, Upload, X, Plus, GripVertical, Trash2, Clock, Save, Eye, Send, Loader2,
-  Users as UsersIcon, Package, Calendar
+  Users as UsersIcon, Package, Calendar, ImageIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -136,6 +137,9 @@ export default function AppointmentForm({ id }: { id?: string }) {
   const [description, setDescription] = useState("");
   const [duration, setDuration] = useState("30");
   const [location, setLocation] = useState("");
+  const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [type, setType] = useState<"user" | "resource">("user");
   const [assignedStaff, setAssignedStaff] = useState<{id: string, name: string}[]>([]);
   const [availableStaff, setAvailableStaff] = useState<{id: string, full_name: string}[]>([]);
@@ -216,6 +220,28 @@ export default function AppointmentForm({ id }: { id?: string }) {
     setQuestions(questions.filter(q => q.id !== qId));
   };
 
+  const handleImageUpload = async (file: File) => {
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        setCoverImage(data.url);
+        setIsDirty(true);
+        toast.success("Image uploaded");
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Upload failed");
+      }
+    } catch {
+      toast.error("Upload failed");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSave = async (isPublish: boolean) => {
     setIsSaving(true);
     try {
@@ -223,12 +249,21 @@ export default function AppointmentForm({ id }: { id?: string }) {
         name,
         description,
         duration: parseInt(duration),
+        location,
         appointment_type: type,
         isPublished: isPublish,
         manualConfirmation,
         manage_capacity: manageCapacity,
         max_bookings_per_slot: parseInt(maxBookings),
         advance_payment: advancePayment,
+        price: advancePayment ? parseFloat(price) : 0,
+        currency,
+        cover_image: coverImage,
+        confirmation_message: confirmationMessage,
+        questions,
+        assignedStaff,
+        working_hours: workingHours,
+        schedule_type: scheduleType,
       };
 
       const res = await fetch(id ? `/api/appointments/${id}` : "/api/appointments", {
@@ -296,13 +331,68 @@ export default function AppointmentForm({ id }: { id?: string }) {
             
             <div className="space-y-2">
               <Label className="text-[13px] font-semibold text-slate-700">Cover Image</Label>
-              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center hover:border-[#378ADD] hover:bg-blue-50/50 transition-all cursor-pointer">
-                 <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-3 border border-slate-100">
-                    <Upload className="w-5 h-5 text-slate-400" />
-                 </div>
-                 <p className="text-[13px] font-medium text-slate-700">Click or drag to upload image</p>
-                 <p className="text-slate-400 text-[12px] mt-1">PNG, JPG up to 5MB</p>
-              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImageUpload(file);
+                  e.target.value = '';
+                }}
+              />
+              {coverImage ? (
+                <div className="relative rounded-2xl overflow-hidden border border-slate-200 group">
+                  <img
+                    src={coverImage}
+                    alt="Cover"
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-2.5 bg-white rounded-xl text-slate-700 hover:bg-slate-100 transition-colors shadow-md"
+                    >
+                      <Upload className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCoverImage(null)}
+                      className="p-2.5 bg-white rounded-xl text-red-600 hover:bg-red-50 transition-colors shadow-md"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  onClick={() => !isUploading && fileInputRef.current?.click()}
+                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                  onDrop={(e) => {
+                    e.preventDefault(); e.stopPropagation();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file && file.type.startsWith('image/')) handleImageUpload(file);
+                  }}
+                  className="border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center hover:border-[#378ADD] hover:bg-blue-50/50 transition-all cursor-pointer"
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-8 h-8 text-[#378ADD] animate-spin mx-auto mb-3" />
+                      <p className="text-[13px] font-medium text-slate-700">Uploading...</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-3 border border-slate-100">
+                        <Upload className="w-5 h-5 text-slate-400" />
+                      </div>
+                      <p className="text-[13px] font-medium text-slate-700">Click or drag to upload image</p>
+                      <p className="text-slate-400 text-[12px] mt-1">PNG, JPG up to 5MB</p>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
